@@ -1,0 +1,57 @@
+@{
+    ViewData["Title"] = "Test Form";
+}
+
+<h2>🔧 TEST FORM - NO ANTI-FORGERY</h2>
+
+<div style="margin: 20px; padding: 20px; border: 2px solid #004F90; border-radius: 10px; max-width: 500px;">
+    <h3 style="color: #004F90;">Test POST to /Profile/TestPost</h3>
+    
+    <form method="post" action="/Profile/TestPost">
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Full Name:</label>
+            <input type="text" name="FullName" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Email:</label>
+            <input type="email" name="Email" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
+        </div>
+        
+        <button type="submit" style="padding: 10px 25px; background: #004F90; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
+            Submit Test
+        </button>
+    </form>
+    
+    <hr style="margin: 20px 0;" />
+    
+    <h3 style="color: #004F90;">Test POST to /Profile/Edit</h3>
+    
+    <form method="post" action="/Profile/Edit">
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Full Name:</label>
+            <input type="text" name="FullName" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Email:</label>
+            <input type="email" name="Email" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
+        </div>
+        
+        <input type="hidden" name="Id" value="0" />
+        
+        <button type="submit" style="padding: 10px 25px; background: #004F90; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
+            Submit to Edit
+        </button>
+    </form>
+</div>
+
+<div style="margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+    <p><strong>Instructions:</strong></p>
+    <ol>
+        <li>Fill in the form above</li>
+        <li>Click Submit</li>
+        <li>Check the console for logs</li>
+        <li>You should see the values you entered</li>
+    </ol>
+</div>

@@ -1,0 +1,112 @@
+@model VoiceAssistantForBlind.Models.JobViewModel
+
+@{
+    ViewData["Title"] = "Create Job";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin Panel</title>
+    <link rel="icon" type="image/png" href="~/Assets/Logo.png" />
+    <style>
+        /* Add any additional styles if needed */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Add logout at top -->
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+        <form method="post" action="/Admin/Logout">
+            @Html.AntiForgeryToken()
+            <button type="submit" style="padding: 8px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">🚪 Logout</button>
+        </form>
+    </div>
+
+    <div style="max-width: 800px; margin: 0 auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: #004F90; margin: 0;">Create New Job</h2>
+        </div>
+        
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div style="color: red; padding: 10px; background: #ffe8e8; border-radius: 4px; margin-bottom: 20px;">
+                <strong>Please fix the following errors:</strong>
+                <div asp-validation-summary="All"></div>
+            </div>
+        }
+        
+        <form method="post" action="/JobAdmin/Create" id="createForm">
+            @Html.AntiForgeryToken()
+            
+            <div style="margin-bottom: 20px;">
+                <label for="CompanyName">Company Name</label>
+                <input type="text" id="CompanyName" name="CompanyName" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="e.g., Tech Solutions Inc." value="@Model?.CompanyName" required />
+                <span style="color: red;">@Html.ValidationMessageFor(m => m.CompanyName)</span>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="JobTitle">Job Title</label>
+                <input type="text" id="JobTitle" name="JobTitle" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="e.g., Senior Software Developer" value="@Model?.JobTitle" required />
+                <span style="color: red;">@Html.ValidationMessageFor(m => m.JobTitle)</span>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="RequiredSkills">Required Skills</label>
+                <textarea id="RequiredSkills" name="RequiredSkills" class="form-control" rows="3" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="e.g., C#, ASP.NET, SQL, JavaScript" required>@Model?.RequiredSkills</textarea>
+                <small style="color: #666;">Separate multiple skills with commas</small>
+                <span style="color: red;">@Html.ValidationMessageFor(m => m.RequiredSkills)</span>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="Description">Job Description</label>
+                <textarea id="Description" name="Description" class="form-control" rows="5" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Enter detailed job description...">@Model?.Description</textarea>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="LastDateToApply">Last Date to Apply</label>
+                <input type="date" id="LastDateToApply" name="LastDateToApply" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" value="@(Model?.LastDateToApply.ToString("yyyy-MM-dd") ?? DateTime.Now.AddDays(30).ToString("yyyy-MM-dd"))" required />
+                <span style="color: red;">@Html.ValidationMessageFor(m => m.LastDateToApply)</span>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="HREmail">HR Email</label>
+                <input type="email" id="HREmail" name="HREmail" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="hr@company.com" value="@Model?.HREmail" required />
+                <span style="color: red;">@Html.ValidationMessageFor(m => m.HREmail)</span>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label>
+                    <input type="checkbox" name="IsActive" value="true" checked />
+                    <input type="hidden" name="IsActive" value="false" />
+                    Active Job Posting
+                </label>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 30px;">
+                <button type="submit" style="padding: 12px 25px; background: #004F90; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
+                    ✨ Create Job
+                </button>
+                <a href="/JobAdmin" style="padding: 12px 25px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 16px;">
+                    ← Back to List
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('createForm').addEventListener('submit', function(e) {
+            const submitButton = this.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Creating...';
+        });
+    </script>
+</body>
+</html>

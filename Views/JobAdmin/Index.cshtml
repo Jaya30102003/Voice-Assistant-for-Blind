@@ -1,0 +1,219 @@
+@model IEnumerable<VoiceAssistantForBlind.Models.Job>
+
+@{
+    ViewData["Title"] = "Job Listings";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin Panel</title>
+    <link rel="icon" type="image/png" href="~/Assets/Logo.png" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        th {
+            background: #004F90;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:hover {
+            background: #f5f5f5;
+        }
+        .skill-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            margin: 2px;
+            background: #e0e0e0;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+        .status-active {
+            display: inline-block;
+            padding: 3px 8px;
+            background: #e8f5e8;
+            color: #2e7d32;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .status-inactive {
+            display: inline-block;
+            padding: 3px 8px;
+            background: #ffe8e8;
+            color: #d32f2f;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .btn {
+            padding: 5px 10px;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+            font-size: 12px;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .btn-primary { background: #004F90; }
+        .btn-info { background: #17a2b8; }
+        .btn-danger { background: #dc3545; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <!-- Logout -->
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+        <form method="post" action="/Admin/Logout" style="display: inline;">
+            @Html.AntiForgeryToken()
+            <button type="submit" style="padding: 8px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                🚪 Logout
+            </button>
+        </form>
+    </div>
+
+    <div style="max-width: 1200px; margin: 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: #004F90;">Job Listings</h2>
+            <div>
+                <a href="/JobAdmin/Stats" style="padding: 10px 20px; background: #17a2b8; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px;">📊 Statistics</a>
+                <a href="/JobAdmin/Create" style="padding: 10px 20px; background: #004F90; color: white; text-decoration: none; border-radius: 4px;">+ Create New Job</a>
+            </div>
+        </div>
+        
+        <!-- Filter Navigation -->
+        <div style="margin-bottom: 20px; display: flex; gap: 10px; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px;">
+            <a href="/JobAdmin" style="padding: 8px 15px; text-decoration: none; color: #333; border-radius: 4px; @(ViewBag.Filter == null ? "background: #004F90; color: white;" : "")">All Jobs</a>
+            <a href="/JobAdmin/ActiveJobs" style="padding: 8px 15px; text-decoration: none; color: #333; border-radius: 4px; @(ViewBag.Filter == "Active Jobs" ? "background: #004F90; color: white;" : "")">Active Jobs</a>
+            <a href="/JobAdmin/ExpiredJobs" style="padding: 8px 15px; text-decoration: none; color: #333; border-radius: 4px; @(ViewBag.Filter == "Expired/Inactive Jobs" ? "background: #004F90; color: white;" : "")">Expired/Inactive</a>
+        </div>
+        
+        <!-- Search Box -->
+        <div style="margin-bottom: 20px;">
+            <form action="/JobAdmin/Search" method="get" style="display: flex; gap: 10px;">
+                <input type="text" name="searchTerm" placeholder="Search jobs..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" value="@Context.Request.Query["searchTerm"]" />
+                <button type="submit" style="padding: 10px 20px; background: #004F90; color: white; border: none; border-radius: 4px; cursor: pointer;">🔍 Search</button>
+            </form>
+        </div>
+        
+        @if (ViewBag.Filter != null)
+        {
+            <div style="margin-bottom: 10px; font-style: italic; color: #666;">
+                Showing: @ViewBag.Filter
+                @if (ViewBag.SearchTerm != null)
+                {
+                    <span> for "@ViewBag.SearchTerm"</span>
+                }
+            </div>
+        }
+        
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div style="color: green; padding: 10px; background: #e8f5e8; border-radius: 4px; margin-bottom: 20px;">
+                @TempData["SuccessMessage"]
+            </div>
+        }
+        
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div style="color: red; padding: 10px; background: #ffe8e8; border-radius: 4px; margin-bottom: 20px;">
+                @TempData["ErrorMessage"]
+            </div>
+        }
+        
+        @if (!Model.Any())
+        {
+            <div style="text-align: center; padding: 50px; background: #f9f9f9; border-radius: 8px;">
+                <p style="color: #666; font-size: 18px;">No jobs found. Click "Create New Job" to add one.</p>
+            </div>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Job Code</th>
+                        <th>Company</th>
+                        <th>Title</th>
+                        <th>Skills</th>
+                        <th>Last Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var job in Model)
+                    {
+                        <tr>
+                            <td style="font-weight: 500;">@job.JobCode</td>
+                            <td>@job.CompanyName</td>
+                            <td>@job.JobTitle</td>
+                            <td>
+                                @{
+                                    var skills = job.RequiredSkills?.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
+                                    if (skills != null && skills.Any())
+                                    {
+                                        foreach (var skill in skills.Take(2))
+                                        {
+                                            <span class="skill-tag">@skill</span>
+                                        }
+                                        if (skills.Count > 2)
+                                        {
+                                            <span style="color: #666; font-size: 11px;">+@(skills.Count - 2)</span>
+                                        }
+                                    }
+                                }
+                            </td>
+                            <td>
+                                @job.LastDateToApply.ToString("yyyy-MM-dd")
+                                @if (job.LastDateToApply < DateTime.Today)
+                                {
+                                    <span style="color: red; font-size: 11px; display: block;">Expired</span>
+                                }
+                            </td>
+                            <td>
+                                @if (job.IsActive && job.LastDateToApply >= DateTime.Today)
+                                {
+                                    <span class="status-active">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="status-inactive">Inactive</span>
+                                }
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                    <a href="/JobAdmin/Details/@job.Id" class="btn btn-info">Details</a>
+                                    <a href="/JobAdmin/Edit/@job.Id" class="btn btn-primary">Edit</a>
+                                    <form method="post" action="/JobAdmin/Delete/@job.Id" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this job?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 15px; color: #666; font-size: 14px;">
+                Total Jobs: @Model.Count()
+            </div>
+        }
+    </div>
+</body>
+</html>

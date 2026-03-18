@@ -1,0 +1,1007 @@
+@{
+    ViewData["Title"] = "Assistance for Blind People";
+}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>@ViewData["Title"]</title>
+
+<link rel="icon" type="image/png" href="@Url.Content("~/Assets/Logo.png")" />
+
+<style>
+  :root{
+    --accent:#2563eb;
+    --accent-dark:#1e40af;
+    --record:#ef4444;
+    --bg:#0b1220;
+    --fg:#e5e7eb;
+    --muted:#9ca3af;
+  }
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: radial-gradient(80% 80% at 50% 30%, #101a34 0%, #0b1220 60%, #070e1a 100%);
+    color: var(--fg);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: 1fr auto;
+  }
+
+  .center { display: grid; place-items: center; padding: 2rem; }
+
+  .mic-btn {
+    width: 180px; height: 180px; border-radius: 9999px; border: none; outline: none;
+    background: linear-gradient(145deg, #2a3b7a, #162046);
+    color: #fff; font-size: 1.15rem; letter-spacing: .02em; cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.07);
+    display: grid; place-items: center; position: relative;
+    transition: transform .12s ease, box-shadow .2s ease, background .2s ease;
+  }
+  .mic-btn:hover { transform: translateY(-2px); }
+  .mic-btn:active { transform: translateY(0); background: linear-gradient(145deg, #24336a, #121a39); }
+  .mic-btn:focus-visible { box-shadow: 0 0 0 4px rgba(37,99,235,.35), 0 10px 30px rgba(0,0,0,.35); }
+
+  .mic-icon {
+    width: 72px; height: 72px; border-radius: 9999px;
+    background: radial-gradient(circle at 50% 40%, #ffffff 0%, #dbeafe 60%, #93c5fd 100%);
+    box-shadow: inset 0 0 0 6px rgba(255,255,255,.25);
+    mask: radial-gradient(circle 33px at center, transparent 32px, black 33px);
+    position: relative;
+  }
+  .mic-glyph { position: absolute; inset: 0; display: grid; place-items: center; }
+  .mic-glyph:before {
+    content: "";
+    width: 18px; height: 34px; border-radius: 9px; background:#0b1220;
+    box-shadow: 0 42px 0 0 #0b1220, 0 52px 18px -10px rgba(11,18,32,.7);
+  }
+  .mic-glyph:after {
+    content: "";
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: 44px; height: 22px; border: 4px solid #0b1220; border-top: none; border-radius: 0 0 24px 24px;
+  }
+
+  .mic-btn.recording {
+    background: linear-gradient(145deg, #7a1f1f, #3e0d0d);
+    box-shadow:
+      0 0 0 10px rgba(239,68,68,.12),
+      0 20px 50px rgba(239,68,68,.35),
+      inset 0 1px 0 rgba(255,255,255,.06);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+
+  @@keyframes pulse {
+    0%   { box-shadow: 0 0 0 10px rgba(239,68,68,.10), 0 20px 50px rgba(239,68,68,.35), inset 0 1px 0 rgba(255,255,255,.06); }
+    50%  { box-shadow: 0 0 0 16px rgba(239,68,68,.18), 0 26px 60px rgba(239,68,68,.40), inset 0 1px 0 rgba(255,255,255,.06); }
+    100% { box-shadow: 0 0 0 10px rgba(239,68,68,.10), 0 20px 50px rgba(239,68,68,.35), inset 0 1px 0 rgba(255,255,255,.06); }
+  }
+
+  .caption { margin-top: .9rem; font-size: .95rem; color: var(--muted); text-align: center; }
+
+  .transcript {
+    border-top: 1px solid rgba(255,255,255,.06);
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+    padding: 1rem 1.25rem 1.25rem;
+  }
+  .transcript h3 { margin: .25rem 0 .5rem; font-weight: 600; font-size: .95rem; color: #cbd5e1; }
+  .transcript .box {
+    width: 100%; min-height: 140px; max-height: 40vh; overflow-y:auto;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px; padding: .9rem 1rem;
+    color: #e5e7eb; line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  .profile-link {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--accent);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: 500;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    transition: background 0.2s;
+    z-index: 100;
+  }
+  .profile-link:hover {
+    background: var(--accent-dark);
+  }
+
+  /* Login/Register buttons */
+  .auth-buttons {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1000;
+    display: flex;
+    gap: 10px;
+  }
+  
+  .auth-button {
+    padding: 8px 20px;
+    color: white;
+    text-decoration: none;
+    border-radius: 30px;
+    font-size: 14px;
+    transition: opacity 0.2s;
+  }
+  
+  .auth-button:hover {
+    opacity: 0.9;
+  }
+  
+  .login-btn {
+    background: #004F90;
+  }
+  
+  .register-btn {
+    background: #28a745;
+  }
+  
+  .logout-btn {
+    background: #dc3545;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 8px 20px;
+    border-radius: 30px;
+    color: white;
+  }
+  
+  .welcome-msg {
+    color: white;
+    padding: 8px 20px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 30px;
+    font-size: 14px;
+  }
+
+  /* Interview feedback styling */
+  .feedback-container {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 8px;
+    background: rgba(0,79,144,0.1);
+    border-left: 4px solid #004F90;
+  }
+  
+  .score-badge {
+    display: inline-block;
+    padding: 5px 15px;
+    background: #004F90;
+    color: white;
+    border-radius: 20px;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  
+  .strengths {
+    color: #28a745;
+    margin-bottom: 5px;
+  }
+  
+  .improvements {
+    color: #dc3545;
+    margin-bottom: 5px;
+  }
+  
+  .progress-indicator {
+    display: inline-block;
+    padding: 3px 10px;
+    background: #6c757d;
+    color: white;
+    border-radius: 15px;
+    font-size: 12px;
+    margin-left: 10px;
+  }
+
+  /* Application status styling */
+  .application-success {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(40, 167, 69, 0.2);
+    border-left: 4px solid #28a745;
+    border-radius: 8px;
+  }
+  
+  .application-error {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(220, 53, 69, 0.2);
+    border-left: 4px solid #dc3545;
+    border-radius: 8px;
+  }
+  
+  .profile-prompt {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(255, 193, 7, 0.2);
+    border-left: 4px solid #ffc107;
+    border-radius: 8px;
+  }
+
+  @@media (max-width: 480px){
+    .mic-btn{ width: 150px; height: 150px; }
+    .mic-icon{ width: 64px; height: 64px; }
+    .auth-buttons { flex-direction: column; top: 10px; left: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Authentication buttons -->
+<div class="auth-buttons">
+    @if (User.Identity != null && User.Identity.IsAuthenticated)
+    {
+        <span class="welcome-msg">Welcome, @User.Identity.Name!</span>
+        <form method="post" action="/Account/Logout" style="display: inline;">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="logout-btn">🚪 Logout</button>
+        </form>
+    }
+    else
+    {
+        <a href="/Account/Login" class="auth-button login-btn">🔑 Login</a>
+        <a href="/Account/Register" class="auth-button register-btn">📝 Register</a>
+    }
+</div>
+
+<a href="/Profile/Edit" class="profile-link">📝 Update Profile</a>
+
+<main class="center">
+  <button id="micBtn" class="mic-btn" aria-label="Start recording" aria-pressed="false">
+    <div class="mic-icon"><div class="mic-glyph"></div></div>
+    <div class="caption"><span id="btnText">Click to Start</span></div>
+  </button>
+</main>
+
+<section class="transcript">
+  <h3>Transcription</h3>
+  <div id="log" class="box" role="status" aria-live="polite"></div>
+</section>
+
+<script>
+(() => {
+  const micBtn   = document.getElementById('micBtn');
+  const btnText  = document.getElementById('btnText');
+  const logEl    = document.getElementById('log');
+
+  let audioCtx, mediaStream, processor, source, sink, recorded = [];
+  let isRecording = false;
+  let busy = false;
+  const targetRate = 16000;
+  
+  // Add a flag to track if speech is currently playing
+  let isSpeaking = false;
+  let speechQueue = [];
+
+  // Interview state
+  let interviewState = {
+    active: false,
+    sessionId: null,
+    currentIndex: 0,
+    totalQuestions: 0,
+    topic: null,
+    currentQuestion: null
+  };
+
+  // Store selected job for application
+  window.selectedJob = null;
+
+  const ui = {
+    setIdle(){
+      isRecording = false;
+      busy = false;
+      micBtn.disabled = false;
+      micBtn.classList.remove('recording');
+      micBtn.setAttribute('aria-pressed','false');
+      micBtn.setAttribute('aria-label','Start recording');
+      btnText.textContent = 'Click to Start';
+    },
+    setRecording(){
+      isRecording = true;
+      micBtn.disabled = false;
+      micBtn.classList.add('recording');
+      micBtn.setAttribute('aria-pressed','true');
+      micBtn.setAttribute('aria-label','Stop recording');
+      btnText.textContent = 'Click to Stop';
+    },
+    setBusy(label){
+      busy = true;
+      micBtn.disabled = true;
+      if (label) btnText.textContent = label;
+    },
+    say(m){ logEl.textContent = m; },
+    append(m){
+      logEl.textContent = (logEl.textContent ? logEl.textContent + "\n" : "") + m;
+      logEl.scrollTop = logEl.scrollHeight;
+    },
+    clearLog() {
+      logEl.textContent = '';
+    }
+  };
+
+  // Improved speak function with queue to prevent overlapping
+  function speakWithWebSpeech(text, callback) {
+    return new Promise((resolve, reject) => {
+      if (!window.speechSynthesis) {
+        reject(new Error('Web Speech API not supported'));
+        return;
+      }
+
+      // Add to queue
+      speechQueue.push({ text, callback, resolve, reject });
+      
+      // Process queue if not already speaking
+      if (!isSpeaking) {
+        processSpeechQueue();
+      }
+    });
+  }
+  
+  function processSpeechQueue() {
+    if (speechQueue.length === 0) {
+      isSpeaking = false;
+      return;
+    }
+    
+    isSpeaking = true;
+    const { text, callback, resolve, reject } = speechQueue.shift();
+    
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    
+    // Get available voices and try to use a good one
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      const preferredVoice = voices.find(v => 
+        v.name.includes('Google UK') || 
+        v.name.includes('Microsoft') ||
+        v.name.includes('Samantha') ||
+        v.name.includes('Female')
+      );
+      if (preferredVoice) utterance.voice = preferredVoice;
+    }
+    
+    utterance.onend = () => {
+      console.log('Web Speech: finished');
+      if (callback) callback();
+      resolve();
+      // Process next in queue
+      setTimeout(() => processSpeechQueue(), 100);
+    };
+    
+    utterance.onerror = (event) => {
+      console.error('Web Speech error:', event);
+      reject(event);
+      processSpeechQueue();
+    };
+    
+    console.log('Web Speech: speaking...');
+    window.speechSynthesis.speak(utterance);
+  }
+
+  // Enhanced speak function with multiple fallbacks
+  async function speakText(text, callback) {
+    if (!text) {
+      console.log('speakText: empty text, calling callback immediately');
+      if (callback) callback();
+      return;
+    }
+
+    // Try Web Speech API first
+    try {
+      await speakWithWebSpeech(text, callback);
+      return;
+    } catch (webSpeechError) {
+      console.log('Web Speech API failed, falling back to TTS API:', webSpeechError);
+      
+      // Fallback to TTS API
+      try {
+        console.log('speakText: speaking via TTS API:', text.substring(0, 30) + '...');
+        const resp = await fetch('/api/text/speak', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ text })
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        
+        audio.onended = () => {
+          console.log('TTS API: audio finished playing');
+          URL.revokeObjectURL(url);
+          if (callback) callback();
+        };
+        
+        audio.onerror = (e) => {
+          console.error('TTS API: audio error', e);
+          URL.revokeObjectURL(url);
+          if (callback) callback();
+        };
+        
+        console.log('TTS API: playing audio');
+        await audio.play();
+      } catch(ttsError) {
+        console.error('All speech methods failed:', ttsError);
+        if (callback) callback();
+        throw ttsError;
+      }
+    }
+  }
+
+  function formatFeedbackHTML(feedback) {
+    let html = '<div class="feedback-container">';
+    html += `<div class="score-badge">Score: ${feedback.score}/10</div>`;
+    
+    if (feedback.strengths && feedback.strengths.length) {
+      html += '<div class="strengths"><strong>✅ Strengths:</strong><br>';
+      feedback.strengths.forEach(s => html += `• ${s}<br>`);
+      html += '</div>';
+    }
+    
+    if (feedback.improvements && feedback.improvements.length) {
+      html += '<div class="improvements"><strong>📝 Areas to Improve:</strong><br>';
+      feedback.improvements.forEach(i => html += `• ${i}<br>`);
+      html += '</div>';
+    }
+    
+    if (feedback.sampleBetterAnswer) {
+      html += `<div><strong>💡 Sample Answer:</strong><br>${feedback.sampleBetterAnswer}</div>`;
+    }
+    
+    html += '</div>';
+    return html;
+  }
+
+  function showApplicationStatus(result) {
+    const statusDiv = document.createElement('div');
+    if (result.success) {
+      statusDiv.className = 'application-success';
+      statusDiv.innerHTML = `✅ ${result.message}`;
+    } else if (result.requiresProfile) {
+      statusDiv.className = 'profile-prompt';
+      statusDiv.innerHTML = `⚠️ ${result.message}`;
+    } else {
+      statusDiv.className = 'application-error';
+      statusDiv.innerHTML = `❌ ${result.message}`;
+    }
+    logEl.appendChild(statusDiv);
+  }
+
+  async function startRecording(){
+    recorded = [];
+    ui.say('Requesting microphone…');
+
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, noiseSuppression: true, echoCancellation: true, autoGainControl: true }
+    });
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') { try { await audioCtx.resume(); } catch {} }
+
+    source = audioCtx.createMediaStreamSource(mediaStream);
+
+    processor = audioCtx.createScriptProcessor(4096, 1, 1);
+    processor.onaudioprocess = e => {
+      const input = e.inputBuffer.getChannelData(0);
+      const mono16k = resample(input, audioCtx.sampleRate, targetRate);
+      recorded.push(floatToPcm16(mono16k));
+    };
+
+    sink = audioCtx.createGain();
+    sink.gain.value = 0;
+
+    source.connect(processor);
+    processor.connect(sink);
+    sink.connect(audioCtx.destination);
+
+    ui.setRecording();
+    ui.say('Recording… press spacebar again to stop.');
+  }
+
+  async function stopRecordingAndUpload(){
+    try{
+      ui.setBusy('Stopping…');
+
+      if (processor) { try { processor.disconnect(); } catch{} processor.onaudioprocess = null; }
+      if (sink) { try { sink.disconnect(); } catch{} }
+      if (source) { try { source.disconnect(); } catch{} }
+      if (audioCtx) { try { await audioCtx.close(); } catch{} }
+      if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+
+      if (!recorded.length) {
+        ui.append('Nothing captured (no audio frames). Try again.');
+        ui.setIdle();
+        return;
+      }
+
+      const wav = toWav(recorded, targetRate);
+      ui.say(`Uploading ${(wav.size/1024/1024).toFixed(2)} MB WAV…`);
+      ui.setBusy('Uploading…');
+
+      // ===== FIRST: Check for SKIP commands during active interview =====
+      if (interviewState.active) {
+        // Get transcription first to check if it's a skip command
+        const transcribeForm = new FormData();
+        transcribeForm.append('audio', wav, 'speech.wav');
+        
+        const transcribeResp = await fetch('/api/stt/transcribe', { method:'POST', body: transcribeForm });
+        let transcribedText = '';
+        
+        if (transcribeResp.ok) {
+          const transcribeResult = await transcribeResp.json();
+          transcribedText = transcribeResult?.text || '';
+          ui.append(`You said: "${transcribedText}"`);
+        }
+        
+        // Check for skip commands
+        if (transcribedText && (
+            transcribedText.toLowerCase().includes("skip") ||
+            transcribedText.toLowerCase().includes("next question") ||
+            transcribedText.toLowerCase().includes("skip the question") ||
+            transcribedText.toLowerCase().includes("move on") ||
+            transcribedText.toLowerCase().includes("i don't know") ||
+            transcribedText.toLowerCase().includes("i dont know")
+        )) {
+          ui.append("⏭️ Skipping current question...");
+          speakText("Skipping to next question.");
+          
+          try {
+            const skipForm = new FormData();
+            skipForm.append('questionIndex', interviewState.currentIndex);
+            skipForm.append('sessionId', interviewState.sessionId);
+            
+            console.log("Sending skip request:", {
+              questionIndex: interviewState.currentIndex,
+              sessionId: interviewState.sessionId
+            });
+            
+            const skipResponse = await fetch('/api/interview/skip', {
+              method: 'POST',
+              body: skipForm
+            });
+            
+            if (!skipResponse.ok) {
+              const errorText = await skipResponse.text();
+              throw new Error(`Server error: ${skipResponse.status} - ${errorText}`);
+            }
+            
+            const skipResult = await skipResponse.json();
+            console.log("Skip result:", skipResult);
+            
+            if (skipResult.isComplete) {
+              ui.append("🎉 Interview complete! Great job practicing!");
+              speakText("Interview complete! Great job practicing!");
+              interviewState.active = false;
+            } else if (skipResult.nextQuestion) {
+              interviewState.currentIndex = skipResult.questionIndex;
+              interviewState.currentQuestion = skipResult.nextQuestion;
+              interviewState.totalQuestions = skipResult.totalQuestions;
+              
+              const progress = `[Question ${skipResult.questionIndex + 1}/${skipResult.totalQuestions}]`;
+              ui.append(`\n❓ ${progress} ${skipResult.nextQuestion}`);
+              speakText(skipResult.nextQuestion);
+            }
+          } catch (err) {
+            ui.append("❌ Error skipping question: " + (err.message || err));
+            console.error("Skip error:", err);
+            speakText("Sorry, there was an error skipping the question.");
+          }
+          
+          ui.setIdle();
+          return;
+        }
+        
+        // ===== INTERVIEW ANSWER HANDLING =====
+        ui.append("🗣️ Answer recorded. Evaluating...");
+        speakText("Evaluating your answer. Please wait.");
+        
+        try {
+          const answerForm = new FormData();
+          answerForm.append('audio', wav, 'answer.wav');
+          answerForm.append('questionIndex', interviewState.currentIndex);
+          answerForm.append('sessionId', interviewState.sessionId);
+          
+          console.log("Sending answer for evaluation:", {
+            questionIndex: interviewState.currentIndex,
+            sessionId: interviewState.sessionId
+          });
+          
+          const evalResponse = await fetch('/api/interview/evaluate', {
+            method: 'POST',
+            body: answerForm
+          });
+          
+          if (!evalResponse.ok) {
+            const errorText = await evalResponse.text();
+            throw new Error(`Server error: ${evalResponse.status} - ${errorText}`);
+          }
+          
+          const evalResult = await evalResponse.json();
+          console.log("Evaluation result:", evalResult);
+          
+          if (evalResult.feedback) {
+            // Display score
+            ui.append(`📊 Score: ${evalResult.feedback.score || 0}/10`);
+            
+            // Display strengths
+            if (evalResult.feedback.strengths && evalResult.feedback.strengths.length) {
+              ui.append(`✅ Strengths: ${evalResult.feedback.strengths.join(', ')}`);
+            }
+            
+            // Display improvements
+            if (evalResult.feedback.improvements && evalResult.feedback.improvements.length) {
+              ui.append(`📝 Areas to improve: ${evalResult.feedback.improvements.join(', ')}`);
+            }
+            
+            // Display sample answer if available
+            if (evalResult.feedback.sampleBetterAnswer) {
+              ui.append(`💡 Sample: ${evalResult.feedback.sampleBetterAnswer}`);
+            }
+            
+            // Create feedback message for speech
+            let feedbackMessage = `Score ${evalResult.feedback.score || 0} out of 10. `;
+            if (evalResult.feedback.strengths && evalResult.feedback.strengths.length) {
+              feedbackMessage += `Strengths: ${evalResult.feedback.strengths.join('. ')}. `;
+            }
+            if (evalResult.feedback.improvements && evalResult.feedback.improvements.length) {
+              feedbackMessage += `Areas to improve: ${evalResult.feedback.improvements.join('. ')}. `;
+            }
+            
+            // Check if interview is complete or next question
+            if (evalResult.isComplete) {
+              ui.append("🎉 Interview complete! Great job practicing!");
+              // Speak just the completion message
+              speakText("Interview complete! Great job practicing!");
+              interviewState.active = false;
+            } else if (evalResult.nextQuestion) {
+              // Update interview state with next question
+              interviewState.currentIndex = evalResult.questionIndex;
+              interviewState.currentQuestion = evalResult.nextQuestion;
+              interviewState.totalQuestions = evalResult.totalQuestions;
+              
+              const progress = `[Question ${evalResult.questionIndex + 1}/${evalResult.totalQuestions}]`;
+              ui.append(`\n❓ ${progress} ${evalResult.nextQuestion}`);
+              
+              // Speak feedback first, then next question
+              speakText(feedbackMessage);
+              // Add next question to queue after a delay
+              setTimeout(() => {
+                speakText(evalResult.nextQuestion);
+              }, 1000);
+            } else {
+              // Just speak feedback if no next question specified
+              speakText(feedbackMessage);
+            }
+          } else {
+            ui.append("⚠️ Unexpected response format from server");
+            speakText("Sorry, I received an unexpected response.");
+          }
+        } catch (err) {
+          ui.append("❌ Error evaluating answer: " + (err.message || err));
+          console.error("Evaluation error:", err);
+          speakText("Sorry, there was an error evaluating your answer.");
+        }
+        
+        ui.setIdle();
+        return;
+      }
+      
+      // ===== START INTERVIEW COMMAND DETECTION =====
+      // For non-interview commands, get transcription first
+      const transcribeForm = new FormData();
+      transcribeForm.append('audio', wav, 'speech.wav');
+      
+      const transcribeResp = await fetch('/api/stt/transcribe', { method:'POST', body: transcribeForm });
+      let transcribedText = '';
+      
+      if (transcribeResp.ok) {
+        const transcribeResult = await transcribeResp.json();
+        transcribedText = transcribeResult?.text || '';
+        ui.append(`You said: "${transcribedText}"`);
+      }
+      
+      // Check if this is an interview start command
+      if (transcribedText && (
+          transcribedText.toLowerCase().includes("start interview") ||
+          transcribedText.toLowerCase().includes("mock interview") ||
+          transcribedText.toLowerCase().includes("practice interview") ||
+          transcribedText.toLowerCase().includes("begin interview") ||
+          transcribedText.toLowerCase().includes("interview me")
+      )) {
+        ui.append("🎤 Detected interview command. Starting interview session...");
+        
+        // Extract topic
+        let topic = "general";
+        if (transcribedText.toLowerCase().includes("c#") || transcribedText.toLowerCase().includes("c sharp")) {
+          topic = "C#";
+        } else if (transcribedText.toLowerCase().includes("python")) {
+          topic = "Python";
+        } else if (transcribedText.toLowerCase().includes("sql")) {
+          topic = "SQL";
+        } else if (transcribedText.toLowerCase().includes("java")) {
+          topic = "Java";
+        } else if (transcribedText.toLowerCase().includes("javascript") || transcribedText.toLowerCase().includes("js")) {
+          topic = "JavaScript";
+        } else {
+          const topicMatch = transcribedText.match(/(?:interview|practice|mock)\s+(?:on\s+)?([a-zA-Z#+.]+)/i);
+          if (topicMatch && topicMatch[1]) {
+            topic = topicMatch[1].trim().replace(/[.,?!]/g, '');
+          }
+        }
+        
+        try {
+          const startResponse = await fetch('/api/interview/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic: topic })
+          });
+          
+          const startResult = await startResponse.json();
+          
+          if (startResult.message) {
+            ui.append(startResult.message);
+            speakText(startResult.message);
+            
+            if (startResult.question) {
+              interviewState.active = true;
+              interviewState.sessionId = startResult.sessionId;
+              interviewState.currentIndex = startResult.questionIndex;
+              interviewState.totalQuestions = startResult.totalQuestions;
+              interviewState.topic = startResult.topic;
+              interviewState.currentQuestion = startResult.question;
+              
+              const progress = `[Question ${startResult.questionIndex + 1}/${startResult.totalQuestions}]`;
+              ui.append(`❓ ${progress} ${startResult.question}`);
+            }
+          }
+        } catch (err) {
+          ui.append("❌ Error starting interview: " + (err.message || err));
+          speakText("Sorry, there was an error starting the interview.");
+        }
+        
+        ui.setIdle();
+        return;
+      }
+      
+      // ===== NORMAL VOICE COMMAND PROCESSING =====
+      // If not an interview command, proceed with normal processing
+      const resp = await fetch('/api/voicecommand/process', { method:'POST', body: form });
+      
+      if(!resp.ok){
+        ui.append('Server error: ' + await resp.text());
+        ui.setIdle();
+        return;
+      }
+
+      const contentType = resp.headers.get('content-type');
+      
+      // PDF response (Resume generation)
+      if (contentType && contentType.includes('application/pdf')) {
+        try {
+          const blob = await resp.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          
+          const contentDisposition = resp.headers.get('content-disposition');
+          let fileName = `Resume_${new Date().toISOString().slice(0,10)}.pdf`;
+          
+          if (contentDisposition) {
+            const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (match && match[1]) {
+              fileName = match[1].replace(/['"]/g, '');
+            }
+          }
+          
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+          
+          ui.append("✅ Resume downloaded successfully! Check your downloads folder.");
+          speakText("Your resume has been generated and downloaded.");
+        } catch (pdfError) {
+          ui.append("❌ Error downloading PDF: " + pdfError.message);
+          speakText("Sorry, there was an error downloading your resume.");
+        }
+        
+        ui.setIdle();
+        return;
+      }
+      
+      // JSON response
+      if (contentType && contentType.includes('application/json')) {
+        const payload = await resp.json();
+        
+        // Job selection response with HR email
+        if (payload.hrEmail) {
+            ui.append(payload.message);
+            ui.append(`\n📧 HR Email: ${payload.hrEmail}`);
+            ui.append(`🏢 Company: ${payload.company}`);
+            ui.append(`💼 Position: ${payload.jobTitle}`);
+            
+            window.selectedJob = {
+              hrEmail: payload.hrEmail,
+              company: payload.company,
+              jobTitle: payload.jobTitle,
+              jobCode: payload.jobCode
+            };
+            
+            const emailDiv = document.createElement('div');
+            emailDiv.style.marginTop = '10px';
+            emailDiv.style.padding = '10px';
+            emailDiv.style.background = '#004F90';
+            emailDiv.style.color = 'white';
+            emailDiv.style.borderRadius = '5px';
+            emailDiv.style.cursor = 'pointer';
+            emailDiv.style.textAlign = 'center';
+            emailDiv.textContent = `📋 Click to copy: ${payload.hrEmail}`;
+            emailDiv.onclick = () => {
+              navigator.clipboard.writeText(payload.hrEmail);
+              speakText('Email copied to clipboard');
+              ui.append('✅ Email copied to clipboard!');
+            };
+            logEl.appendChild(emailDiv);
+            
+            speakText(payload.message);
+        }
+        
+        // Application response
+        else if (payload.success !== undefined) {
+            ui.append(payload.message);
+            showApplicationStatus(payload);
+            speakText(payload.message);
+            
+            if (payload.success) {
+                window.selectedJob = null;
+            }
+        }
+        
+        // Profile required response
+        else if (payload.requiresProfile) {
+            ui.append(payload.message);
+            const profileDiv = document.createElement('div');
+            profileDiv.className = 'profile-prompt';
+            profileDiv.innerHTML = `⚠️ ${payload.message}<br><br>
+              <a href="/Profile/Edit" style="color: white; background: #004F90; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">📝 Update Profile Now</a>`;
+            logEl.appendChild(profileDiv);
+            speakText(payload.message);
+        }
+        
+        // Job listing response
+        else if (payload.message && (
+            payload.message.toLowerCase().includes("job") || 
+            payload.message.toLowerCase().includes("available") ||
+            payload.hasJobs !== undefined
+        )) {
+            ui.append(payload.message);
+            speakText(payload.message);
+        }
+        
+        // Default response
+        else if (payload.message) {
+            ui.append(payload.message);
+            speakText(payload.message);
+        }
+        
+        ui.setIdle();
+        return;
+      }
+      
+      ui.append("Unexpected response type from server.");
+      speakText("Sorry, I received an unexpected response.");
+      ui.setIdle();
+      
+    } catch(err){
+      ui.append('Network/Stop error: ' + (err?.message || err));
+      console.error("Fetch error:", err);
+      ui.setIdle();
+    }
+  }
+
+  micBtn.addEventListener('click', async () => {
+    if (busy) return;
+    if (!isRecording) {
+      try { await startRecording(); }
+      catch(err){ ui.append('Mic error: ' + (err?.message || err)); ui.setIdle(); }
+    } else {
+      await stopRecordingAndUpload();
+    }
+  });
+
+  document.addEventListener('keydown', async (e) => {
+    if (e.key === ' ') {
+      e.preventDefault();
+      micBtn.click();
+    }
+  });
+
+  function resample(f32, srcRate, dstRate){
+    if (srcRate === dstRate) return f32;
+    const ratio = srcRate / dstRate, outLen = Math.round(f32.length / ratio);
+    const out = new Float32Array(outLen); let pos = 0;
+    for (let i = 0; i < outLen; i++) { out[i] = f32[Math.floor(pos)]; pos += ratio; }
+    return out;
+  }
+  
+  function floatToPcm16(f32){
+    const i16 = new Int16Array(f32.length);
+    for (let i = 0; i < f32.length; i++){
+      let s = Math.max(-1, Math.min(1, f32[i]));
+      i16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return i16;
+  }
+  
+  function toWav(chunksI16, sampleRate){
+    let total = 0; for (const c of chunksI16) total += c.length;
+    const pcm = new Int16Array(total);
+    let off = 0; for (const c of chunksI16) { pcm.set(c, off); off += c.length; }
+    const bytes = pcm.length * 2;
+    const buffer = new ArrayBuffer(44 + bytes);
+    const view = new DataView(buffer);
+    writeAscii(view, 0,  'RIFF'); view.setUint32(4, 36 + bytes, true);
+    writeAscii(view, 8,  'WAVE'); writeAscii(view, 12, 'fmt ');
+    view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true); writeAscii(view, 36, 'data');
+    view.setUint32(40, bytes, true); let idx = 44;
+    for (let i = 0; i < pcm.length; i++, idx += 2) view.setInt16(idx, pcm[i], true);
+    return new Blob([view], { type: 'audio/wav' });
+
+    function writeAscii(dv, offset, s){ for (let i = 0; i < s.length; i++) dv.setUint8(offset + i, s.charCodeAt(i)); }
+  }
+
+  ui.setIdle();
+  
+  // ========== WELCOME MESSAGE ==========
+  function playWelcomeMessage() {
+    const welcomeMessage = "Welcome to Voice Assistant for Blind. " +
+        "You can say 'list jobs' to hear available job openings. " +
+        "Say 'generate resume' to create your PDF resume. " +
+        "For interview practice, say 'start interview' followed by a topic. " +
+        "The available topics are C#, Python, SQL, Java and JavaScript. " +
+        "During interviews, you can say 'skip' to move to the next question, " +
+        "or 'repeat' to hear the question again. " +
+        "To get started, press the spacebar or click the microphone button.";
+    
+    ui.append("🔊 " + welcomeMessage);
+    
+    if (window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(welcomeMessage);
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
+        console.log('Web Speech failed');
+      }
+    }
+  }
+
+  window.addEventListener('load', function() {
+    setTimeout(playWelcomeMessage, 1500);
+    ui.append("💡 Say 'help' anytime for voice instructions.");
+  });
+
+})();
+</script>
+</body>
+</html>

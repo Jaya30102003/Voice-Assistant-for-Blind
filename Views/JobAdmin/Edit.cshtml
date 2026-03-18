@@ -1,0 +1,164 @@
+@model VoiceAssistantForBlind.Models.JobViewModel
+
+@{
+    ViewData["Title"] = "Edit Job";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin Panel</title>
+    <link rel="icon" type="image/png" href="~/Assets/Logo.png" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div style="max-width: 800px; margin: 0 auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: #004F90; margin: 0;">Edit Job</h2>
+            <div>
+                <a href="/JobAdmin/Details/@Model.Id" style="padding: 8px 15px; background: #17a2b8; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px; font-size: 14px;">
+                    👁️ View Details
+                </a>
+                <span style="background: #e0e0e0; padding: 5px 10px; border-radius: 4px; font-size: 14px;">@Model.JobCode</span>
+            </div>
+        </div>
+        
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div style="color: red; padding: 10px; background: #ffe8e8; border-radius: 4px; margin-bottom: 20px;">
+                <strong>Please fix the following errors:</strong>
+                <div asp-validation-summary="All"></div>
+            </div>
+        }
+        
+        <form method="post" action="/JobAdmin/Edit/@Model.Id" id="editForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="Id" value="@Model.Id" />
+            
+            <!-- Job Code Field (Read-only) -->
+            <div style="margin-bottom: 20px;">
+                <label for="JobCode">Job Code</label>
+                <input type="text" id="JobCode" name="JobCode" class="form-control" readonly 
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;" 
+                       value="@Model.JobCode" />
+                <small style="color: #666;">Job code cannot be changed</small>
+            </div>
+            
+            <!-- Company Name -->
+            <div style="margin-bottom: 20px;">
+                <label for="CompanyName">Company Name</label>
+                <input type="text" id="CompanyName" name="CompanyName" class="form-control" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" 
+                       value="@Model.CompanyName" />
+                <span style="color: red;">@Html.ValidationMessageFor(m => m.CompanyName)</span>
+            </div>
+            
+            <!-- Job Title -->
+            <div style="margin-bottom: 20px;">
+                <label for="JobTitle">Job Title</label>
+                <input type="text" id="JobTitle" name="JobTitle" class="form-control" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" 
+                       value="@Model.JobTitle" />
+                <span style="color: red;">@Html.ValidationMessageFor(m => m.JobTitle)</span>
+            </div>
+            
+            <!-- Required Skills -->
+            <div style="margin-bottom: 20px;">
+                <label for="RequiredSkills">Required Skills</label>
+                <textarea id="RequiredSkills" name="RequiredSkills" class="form-control" rows="3" 
+                          style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" 
+                          placeholder="C#, ASP.NET, SQL, JavaScript">@Model.RequiredSkills</textarea>
+                <small style="color: #666;">Separate multiple skills with commas</small>
+                <span style="color: red;">@Html.ValidationMessageFor(m => m.RequiredSkills)</span>
+            </div>
+            
+            <!-- Job Description -->
+            <div style="margin-bottom: 20px;">
+                <label for="Description">Job Description</label>
+                <textarea id="Description" name="Description" class="form-control" rows="8" 
+                          style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" 
+                          placeholder="Enter detailed job description...">@Model.Description</textarea>
+            </div>
+            
+            <!-- Two Column Layout -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label for="LastDateToApply">Last Date to Apply</label>
+                    <input type="date" id="LastDateToApply" name="LastDateToApply" class="form-control" 
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" 
+                           value="@Model.LastDateToApply.ToString("yyyy-MM-dd")" />
+                    <span style="color: red;">@Html.ValidationMessageFor(m => m.LastDateToApply)</span>
+                </div>
+                
+                <div>
+                    <label for="HREmail">HR Email</label>
+                    <input type="email" id="HREmail" name="HREmail" class="form-control" 
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" 
+                           value="@Model.HREmail" />
+                    <span style="color: red;">@Html.ValidationMessageFor(m => m.HREmail)</span>
+                </div>
+            </div>
+            
+            <!-- Status -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" name="IsActive" value="true" @(Model.IsActive ? "checked" : "") />
+                    <input type="hidden" name="IsActive" value="false" />
+                    <span>Active Job Posting</span>
+                </label>
+                <small style="color: #666;">Inactive jobs won't appear in search results</small>
+            </div>
+            
+            <!-- Form Actions -->
+            <div style="display: flex; gap: 10px; margin-top: 30px;">
+                <button type="submit" style="padding: 12px 25px; background: #004F90; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
+                    💾 Save Changes
+                </button>
+                <a href="/JobAdmin/Details/@Model.Id" style="padding: 12px 25px; background: #17a2b8; color: white; text-decoration: none; border-radius: 4px; font-size: 16px;">
+                    👁️ View Details
+                </a>
+                <a href="/JobAdmin" style="padding: 12px 25px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 16px;">
+                    ← Back to List
+                </a>
+            </div>
+        </form>
+        
+        <!-- Danger Zone -->
+        <div style="margin-top: 40px; padding: 20px; border: 1px solid #dc3545; border-radius: 4px;">
+            <h3 style="color: #dc3545; margin-top: 0;">⚠️ Danger Zone</h3>
+            <p style="color: #666; margin-bottom: 15px;">Once you delete a job, there is no going back.</p>
+            <form method="post" action="/JobAdmin/Delete/@Model.Id" onsubmit="return confirm('Are you absolutely sure? This action cannot be undone.');">
+                @Html.AntiForgeryToken()
+                <button type="submit" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    🗑️ Delete Job
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function resetForm() {
+            if (confirm('Reset all changes?')) {
+                window.location.reload();
+            }
+        }
+
+        let formSubmitted = false;
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function() {
+                formSubmitted = true;
+            });
+        }
+    </script>
+</body>
+</html>

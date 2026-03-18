@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+
+*.onnx
+*.ggml
+*.bin
+*.wav
+*.mp3

@@ -1,0 +1,458 @@
+@model VoiceAssistantForBlind.Models.UserProfileViewModel
+
+@{
+    ViewData["Title"] = "Edit Profile";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Voice Assistant for Blind</title>
+    <link rel="icon" type="image/png" href="~/Assets/Logo.png" />
+    <link rel="stylesheet" href="~/css/profile.css" />
+</head>
+<body>
+    <div class="profile-container">
+        <h2>Edit Your Profile</h2>
+        
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success">
+                @TempData["SuccessMessage"]
+            </div>
+        }
+        
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div style="color: red; padding: 10px; background: #ffe8e8; border-radius: 4px; margin-bottom: 20px;">
+                @TempData["ErrorMessage"]
+            </div>
+        }
+        
+        <form method="post" action="/Profile/Edit" id="profileForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="Id" value="@Model.Id" />
+            
+            <!-- Personal Information Section -->
+            <div class="section-card">
+                <h3>Personal Information</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full Name:</label>
+                        <input type="text" name="FullName" class="form-control" value="@Model.FullName" required />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" name="Email" class="form-control" value="@Model.Email" required />
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone:</label>
+                        <input type="tel" name="Phone" class="form-control" value="@Model.Phone" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>LinkedIn:</label>
+                        <input type="url" name="LinkedIn" class="form-control" value="@Model.LinkedIn" placeholder="https://linkedin.com/in/username" />
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>GitHub:</label>
+                        <input type="url" name="GitHub" class="form-control" value="@Model.GitHub" placeholder="https://github.com/username" />
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Skills Section -->
+            <div class="section-card">
+                <h3>Skills & Expertise</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Languages:</label>
+                        <textarea name="Languages" class="form-control" rows="2">@Model.Languages</textarea>
+                        <small class="form-text text-muted">Separate multiple items with commas</small>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Concepts:</label>
+                        <textarea name="Concepts" class="form-control" rows="2">@Model.Concepts</textarea>
+                        <small class="form-text text-muted">Separate multiple items with commas</small>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Software/Tools:</label>
+                        <textarea name="Software" class="form-control" rows="2">@Model.Software</textarea>
+                        <small class="form-text text-muted">Separate multiple items with commas</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Education Section -->
+            <div class="section-card" id="education-section">
+                <h3>Education</h3>
+                <div id="education-list">
+                    @for (int i = 0; i < Model.Education.Count; i++)
+                    {
+                        <div class="education-item">
+                            <h4>Education @(i + 1)</h4>
+                            <input type="hidden" name="Education[@i].Id" value="@Model.Education[i].Id" />
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Degree:</label>
+                                    <input type="text" name="Education[@i].Degree" class="form-control" value="@Model.Education[i].Degree" placeholder="e.g., Bachelor of Science in Computer Science" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Institution:</label>
+                                    <input type="text" name="Education[@i].Institution" class="form-control" value="@Model.Education[i].Institution" placeholder="e.g., University of Technology" />
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Duration:</label>
+                                    <input type="text" name="Education[@i].Duration" class="form-control" value="@Model.Education[i].Duration" placeholder="e.g., 2020-2024" />
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Highlights (one per line):</label>
+                                <textarea name="Education[@i].Highlights" class="form-control" rows="3">@(Model.Education[i].Highlights != null ? string.Join("\n", Model.Education[i].Highlights) : "")</textarea>
+                                <small class="form-text text-muted">Enter one highlight per line</small>
+                            </div>
+                            
+                            <button type="button" class="btn-danger remove-item" onclick="removeEducation(this)">Remove</button>
+                            <hr />
+                        </div>
+                    }
+                </div>
+                
+                <button type="button" class="btn-secondary" onclick="addEducation()">+ Add Education</button>
+            </div>
+            
+            <!-- Experience Section -->
+            <div class="section-card" id="experience-section">
+                <h3>Work Experience</h3>
+                <div id="experience-list">
+                    @for (int i = 0; i < Model.Experience.Count; i++)
+                    {
+                        <div class="experience-item">
+                            <h4>Experience @(i + 1)</h4>
+                            <input type="hidden" name="Experience[@i].Id" value="@Model.Experience[i].Id" />
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Company:</label>
+                                    <input type="text" name="Experience[@i].Company" class="form-control" value="@Model.Experience[i].Company" placeholder="e.g., Microsoft, Google" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Role:</label>
+                                    <input type="text" name="Experience[@i].Role" class="form-control" value="@Model.Experience[i].Role" placeholder="e.g., Software Engineer" />
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Location:</label>
+                                    <input type="text" name="Experience[@i].Location" class="form-control" value="@Model.Experience[i].Location" placeholder="e.g., New York, NY / Remote" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Duration:</label>
+                                    <input type="text" name="Experience[@i].Duration" class="form-control" value="@Model.Experience[i].Duration" placeholder="e.g., Jan 2023 - Present" />
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Highlights (one per line):</label>
+                                <textarea name="Experience[@i].Highlights" class="form-control" rows="3">@(Model.Experience[i].Highlights != null ? string.Join("\n", Model.Experience[i].Highlights) : "")</textarea>
+                                <small class="form-text text-muted">Enter one highlight per line</small>
+                            </div>
+                            
+                            <button type="button" class="btn-danger remove-item" onclick="removeExperience(this)">Remove</button>
+                            <hr />
+                        </div>
+                    }
+                </div>
+                
+                <button type="button" class="btn-secondary" onclick="addExperience()">+ Add Experience</button>
+            </div>
+            
+            <!-- Projects Section -->
+            <div class="section-card" id="projects-section">
+                <h3>Projects</h3>
+                <div id="projects-list">
+                    @for (int i = 0; i < Model.Projects.Count; i++)
+                    {
+                        <div class="project-item">
+                            <h4>Project @(i + 1)</h4>
+                            <input type="hidden" name="Projects[@i].Id" value="@Model.Projects[i].Id" />
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Title:</label>
+                                    <input type="text" name="Projects[@i].Title" class="form-control" value="@Model.Projects[i].Title" placeholder="e.g., Voice Assistant for Blind" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Duration:</label>
+                                    <input type="text" name="Projects[@i].Duration" class="form-control" value="@Model.Projects[i].Duration" placeholder="e.g., Jan 2024 - Mar 2024" />
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Highlights (one per line):</label>
+                                <textarea name="Projects[@i].Highlights" class="form-control" rows="3">@(Model.Projects[i].Highlights != null ? string.Join("\n", Model.Projects[i].Highlights) : "")</textarea>
+                                <small class="form-text text-muted">Enter one highlight per line</small>
+                            </div>
+                            
+                            <button type="button" class="btn-danger remove-item" onclick="removeProject(this)">Remove</button>
+                            <hr />
+                        </div>
+                    }
+                </div>
+                
+                <button type="button" class="btn-secondary" onclick="addProject()">+ Add Project</button>
+            </div>
+            
+            <!-- Certifications Section -->
+            <div class="section-card">
+                <h3>Certifications</h3>
+                <div id="certifications-list">
+                    @for (int i = 0; i < Model.Certifications.Count; i++)
+                    {
+                        <div class="certification-item">
+                            <input type="text" name="Certifications[@i]" class="form-control" value="@Model.Certifications[i]" placeholder="e.g., AWS Certified Developer" />
+                            <button type="button" class="btn-small btn-danger" onclick="removeCertification(this)">×</button>
+                        </div>
+                    }
+                </div>
+                
+                <button type="button" class="btn-secondary" onclick="addCertification()">+ Add Certification</button>
+            </div>
+            
+            <!-- Achievements Section -->
+            <div class="section-card">
+                <h3>Achievements</h3>
+                <div id="achievements-list">
+                    @for (int i = 0; i < Model.Achievements.Count; i++)
+                    {
+                        <div class="achievement-item">
+                            <input type="text" name="Achievements[@i]" class="form-control" value="@Model.Achievements[i]" placeholder="e.g., Winner of Hackathon 2024" />
+                            <button type="button" class="btn-small btn-danger" onclick="removeAchievement(this)">×</button>
+                        </div>
+                    }
+                </div>
+                
+                <button type="button" class="btn-secondary" onclick="addAchievement()">+ Add Achievement</button>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">Save Profile</button>
+                <a href="@Url.Action("Index", "Home")" class="btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        console.log("Script loading at: " + new Date().toLocaleTimeString());
+        
+        // Initialize counters
+        let educationCount = @Model.Education.Count;
+        let experienceCount = @Model.Experience.Count;
+        let projectCount = @Model.Projects.Count;
+        let certificationCount = @Model.Certifications.Count;
+        let achievementCount = @Model.Achievements.Count;
+
+        console.log("Counts loaded:", { educationCount, experienceCount, projectCount, certificationCount, achievementCount });
+
+        // ========== EDUCATION FUNCTIONS ==========
+        function addEducation() {
+            console.log("addEducation clicked!");
+            const index = educationCount;
+            const template = `
+                <div class="education-item">
+                    <h4>Education ${index + 1}</h4>
+                    <input type="hidden" name="Education[${index}].Id" value="0" />
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Degree:</label>
+                            <input type="text" name="Education[${index}].Degree" class="form-control" placeholder="e.g., Bachelor of Science in Computer Science" />
+                        </div>
+                        <div class="form-group">
+                            <label>Institution:</label>
+                            <input type="text" name="Education[${index}].Institution" class="form-control" placeholder="e.g., University of Technology" />
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Duration:</label>
+                            <input type="text" name="Education[${index}].Duration" class="form-control" placeholder="e.g., 2020-2024" />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Highlights (one per line):</label>
+                        <textarea name="Education[${index}].Highlights" class="form-control" rows="3" placeholder="Enter one highlight per line"></textarea>
+                    </div>
+                    
+                    <button type="button" class="btn-danger remove-item" onclick="removeEducation(this)">Remove</button>
+                    <hr />
+                </div>
+            `;
+            document.getElementById('education-list').insertAdjacentHTML('beforeend', template);
+            educationCount++;
+        }
+
+        function removeEducation(button) {
+            if (confirm('Remove this education entry?')) {
+                button.closest('.education-item').remove();
+            }
+        }
+
+        // ========== EXPERIENCE FUNCTIONS ==========
+        function addExperience() {
+            console.log("addExperience clicked!");
+            const index = experienceCount;
+            const template = `
+                <div class="experience-item">
+                    <h4>Experience ${index + 1}</h4>
+                    <input type="hidden" name="Experience[${index}].Id" value="0" />
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Company:</label>
+                            <input type="text" name="Experience[${index}].Company" class="form-control" placeholder="e.g., Microsoft, Google" />
+                        </div>
+                        <div class="form-group">
+                            <label>Role:</label>
+                            <input type="text" name="Experience[${index}].Role" class="form-control" placeholder="e.g., Software Engineer" />
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Location:</label>
+                            <input type="text" name="Experience[${index}].Location" class="form-control" placeholder="e.g., New York, NY / Remote" />
+                        </div>
+                        <div class="form-group">
+                            <label>Duration:</label>
+                            <input type="text" name="Experience[${index}].Duration" class="form-control" placeholder="e.g., Jan 2023 - Present" />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Highlights (one per line):</label>
+                        <textarea name="Experience[${index}].Highlights" class="form-control" rows="3" placeholder="Enter one highlight per line"></textarea>
+                    </div>
+                    
+                    <button type="button" class="btn-danger remove-item" onclick="removeExperience(this)">Remove</button>
+                    <hr />
+                </div>
+            `;
+            document.getElementById('experience-list').insertAdjacentHTML('beforeend', template);
+            experienceCount++;
+        }
+
+        function removeExperience(button) {
+            if (confirm('Remove this experience entry?')) {
+                button.closest('.experience-item').remove();
+            }
+        }
+
+        // ========== PROJECT FUNCTIONS ==========
+        function addProject() {
+            console.log("addProject clicked!");
+            const index = projectCount;
+            const template = `
+                <div class="project-item">
+                    <h4>Project ${index + 1}</h4>
+                    <input type="hidden" name="Projects[${index}].Id" value="0" />
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Title:</label>
+                            <input type="text" name="Projects[${index}].Title" class="form-control" placeholder="e.g., Voice Assistant for Blind" />
+                        </div>
+                        <div class="form-group">
+                            <label>Duration:</label>
+                            <input type="text" name="Projects[${index}].Duration" class="form-control" placeholder="e.g., Jan 2024 - Mar 2024" />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Highlights (one per line):</label>
+                        <textarea name="Projects[${index}].Highlights" class="form-control" rows="3" placeholder="Enter one highlight per line"></textarea>
+                    </div>
+                    
+                    <button type="button" class="btn-danger remove-item" onclick="removeProject(this)">Remove</button>
+                    <hr />
+                </div>
+            `;
+            document.getElementById('projects-list').insertAdjacentHTML('beforeend', template);
+            projectCount++;
+        }
+
+        function removeProject(button) {
+            if (confirm('Remove this project entry?')) {
+                button.closest('.project-item').remove();
+            }
+        }
+
+        // ========== CERTIFICATION FUNCTIONS ==========
+        function addCertification() {
+            console.log("addCertification clicked!");
+            const index = certificationCount;
+            const template = `
+                <div class="certification-item">
+                    <input type="text" name="Certifications[${index}]" class="form-control" placeholder="e.g., AWS Certified Developer" />
+                    <button type="button" class="btn-small btn-danger" onclick="removeCertification(this)">×</button>
+                </div>
+            `;
+            document.getElementById('certifications-list').insertAdjacentHTML('beforeend', template);
+            certificationCount++;
+        }
+
+        function removeCertification(button) {
+            if (confirm('Remove this certification?')) {
+                button.closest('.certification-item').remove();
+            }
+        }
+
+        // ========== ACHIEVEMENT FUNCTIONS ==========
+        function addAchievement() {
+            console.log("addAchievement clicked!");
+            const index = achievementCount;
+            const template = `
+                <div class="achievement-item">
+                    <input type="text" name="Achievements[${index}]" class="form-control" placeholder="e.g., Winner of Hackathon 2024" />
+                    <button type="button" class="btn-small btn-danger" onclick="removeAchievement(this)">×</button>
+                </div>
+            `;
+            document.getElementById('achievements-list').insertAdjacentHTML('beforeend', template);
+            achievementCount++;
+        }
+
+        function removeAchievement(button) {
+            if (confirm('Remove this achievement?')) {
+                button.closest('.achievement-item').remove();
+            }
+        }
+
+        console.log("All functions defined!");
+    </script>
+</body>
+</html>

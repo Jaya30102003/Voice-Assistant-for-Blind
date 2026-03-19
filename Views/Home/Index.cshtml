@@ -268,6 +268,19 @@
 </section>
 
 <script>
+  // ===== CACHE DESTROYER =====
+console.log('🔥 FORCING NEW SCRIPT TO RUN');
+// Completely remove any reference to old code
+window.stopRecordingAndUpload = undefined;
+// Force a new function name
+const processVoiceCommand = async function() {
+  // All your code here
+};
+// Replace the click handler completely
+const newMicBtn = micBtn.cloneNode(true);
+micBtn.parentNode.replaceChild(newMicBtn, micBtn);
+micBtn = newMicBtn;
+// ===== END CACHE DESTROYER =====
 (() => {
   const micBtn   = document.getElementById('micBtn');
   const btnText  = document.getElementById('btnText');
@@ -778,134 +791,183 @@
         return;
       }
       
-      // ===== NORMAL VOICE COMMAND PROCESSING =====
-      // If not an interview command, proceed with normal processing
-      const resp = await fetch('/api/voicecommand/process', { method:'POST', body: form });
-      
-      if(!resp.ok){
-        ui.append('Server error: ' + await resp.text());
-        ui.setIdle();
-        return;
-      }
-
-      const contentType = resp.headers.get('content-type');
-      
-      // PDF response (Resume generation)
-      if (contentType && contentType.includes('application/pdf')) {
+      // ===== JOB LISTING COMMAND =====
+      if (transcribedText && (
+          transcribedText.toLowerCase().includes("list jobs") ||
+          transcribedText.toLowerCase().includes("available jobs") ||
+          transcribedText.toLowerCase().includes("show jobs")
+      )) {
+        ui.append("📋 Fetching job listings...");
+        speakText("Fetching available jobs.");
+        
         try {
-          const blob = await resp.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
+          // Create FormData with the audio file
+          const jobFormData = new FormData();
+          jobFormData.append('audio', wav, 'job_command.wav');
           
-          const contentDisposition = resp.headers.get('content-disposition');
-          let fileName = `Resume_${new Date().toISOString().slice(0,10)}.pdf`;
+          const jobResponse = await fetch('/api/voicecommand/process', {
+            method: 'POST',
+            body: jobFormData
+          });
           
-          if (contentDisposition) {
-            const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-            if (match && match[1]) {
-              fileName = match[1].replace(/['"]/g, '');
-            }
+          if (!jobResponse.ok) {
+            throw new Error(`Server error: ${jobResponse.status}`);
           }
           
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(url);
+          const result = await jobResponse.json();
+          ui.append(result.message);
+          speakText(result.message);
+        } catch (err) {
+          ui.append("❌ Error fetching jobs: " + err.message);
+          speakText("Sorry, there was an error fetching jobs.");
+        }
+        
+        ui.setIdle();
+        return;
+      }
+      
+      // ===== RESUME GENERATION COMMAND =====
+      if (transcribedText && (
+          transcribedText.toLowerCase().includes("generate resume") ||
+          transcribedText.toLowerCase().includes("create resume") ||
+          transcribedText.toLowerCase().includes("generate profile") ||
+          transcribedText.toLowerCase().includes("my profile")
+      )) {
+        ui.append("📄 Generating your resume...");
+        speakText("Generating your resume. Please wait.");
+        
+        try {
+          // Create FormData with the audio file
+          const resumeFormData = new FormData();
+          resumeFormData.append('audio', wav, 'resume_command.wav');
           
-          ui.append("✅ Resume downloaded successfully! Check your downloads folder.");
-          speakText("Your resume has been generated and downloaded.");
-        } catch (pdfError) {
-          ui.append("❌ Error downloading PDF: " + pdfError.message);
-          speakText("Sorry, there was an error downloading your resume.");
-        }
-        
-        ui.setIdle();
-        return;
-      }
-      
-      // JSON response
-      if (contentType && contentType.includes('application/json')) {
-        const payload = await resp.json();
-        
-        // Job selection response with HR email
-        if (payload.hrEmail) {
-            ui.append(payload.message);
-            ui.append(`\n📧 HR Email: ${payload.hrEmail}`);
-            ui.append(`🏢 Company: ${payload.company}`);
-            ui.append(`💼 Position: ${payload.jobTitle}`);
+          const resumeResponse = await fetch('/api/voicecommand/process', {
+            method: 'POST',
+            body: resumeFormData
+          });
+          
+          const contentType = resumeResponse.headers.get('content-type');
+          
+          if (contentType && contentType.includes('application/pdf')) {
+            const blob = await resumeResponse.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
             
-            window.selectedJob = {
-              hrEmail: payload.hrEmail,
-              company: payload.company,
-              jobTitle: payload.jobTitle,
-              jobCode: payload.jobCode
-            };
+            const contentDisposition = resumeResponse.headers.get('content-disposition');
+            let fileName = `Resume_${new Date().toISOString().slice(0,10)}.pdf`;
             
-            const emailDiv = document.createElement('div');
-            emailDiv.style.marginTop = '10px';
-            emailDiv.style.padding = '10px';
-            emailDiv.style.background = '#004F90';
-            emailDiv.style.color = 'white';
-            emailDiv.style.borderRadius = '5px';
-            emailDiv.style.cursor = 'pointer';
-            emailDiv.style.textAlign = 'center';
-            emailDiv.textContent = `📋 Click to copy: ${payload.hrEmail}`;
-            emailDiv.onclick = () => {
-              navigator.clipboard.writeText(payload.hrEmail);
-              speakText('Email copied to clipboard');
-              ui.append('✅ Email copied to clipboard!');
-            };
-            logEl.appendChild(emailDiv);
-            
-            speakText(payload.message);
-        }
-        
-        // Application response
-        else if (payload.success !== undefined) {
-            ui.append(payload.message);
-            showApplicationStatus(payload);
-            speakText(payload.message);
-            
-            if (payload.success) {
-                window.selectedJob = null;
+            if (contentDisposition) {
+              const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+              if (match && match[1]) {
+                fileName = match[1].replace(/['"]/g, '');
+              }
             }
-        }
-        
-        // Profile required response
-        else if (payload.requiresProfile) {
-            ui.append(payload.message);
-            const profileDiv = document.createElement('div');
-            profileDiv.className = 'profile-prompt';
-            profileDiv.innerHTML = `⚠️ ${payload.message}<br><br>
-              <a href="/Profile/Edit" style="color: white; background: #004F90; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">📝 Update Profile Now</a>`;
-            logEl.appendChild(profileDiv);
-            speakText(payload.message);
-        }
-        
-        // Job listing response
-        else if (payload.message && (
-            payload.message.toLowerCase().includes("job") || 
-            payload.message.toLowerCase().includes("available") ||
-            payload.hasJobs !== undefined
-        )) {
-            ui.append(payload.message);
-            speakText(payload.message);
-        }
-        
-        // Default response
-        else if (payload.message) {
-            ui.append(payload.message);
-            speakText(payload.message);
+            
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            ui.append("✅ Resume downloaded successfully!");
+            speakText("Your resume has been generated and downloaded.");
+          } else {
+            const result = await resumeResponse.json();
+            ui.append(result.message || "Resume generation initiated");
+            speakText(result.message || "Resume generation initiated");
+          }
+        } catch (err) {
+          ui.append("❌ Error generating resume: " + err.message);
+          speakText("Sorry, there was an error generating your resume.");
         }
         
         ui.setIdle();
         return;
       }
       
-      ui.append("Unexpected response type from server.");
-      speakText("Sorry, I received an unexpected response.");
+      // ===== JOB SELECTION COMMAND =====
+      if (transcribedText && (
+          transcribedText.toLowerCase().includes("select job") ||
+          transcribedText.toLowerCase().includes("job 1") ||
+          transcribedText.toLowerCase().includes("job 2") ||
+          transcribedText.toLowerCase().includes("first job")
+      )) {
+        ui.append("🔍 Processing job selection...");
+        
+        try {
+          // Create FormData with the audio file
+          const selectFormData = new FormData();
+          selectFormData.append('audio', wav, 'select_command.wav');
+          
+          const selectResponse = await fetch('/api/voicecommand/process', {
+            method: 'POST',
+            body: selectFormData
+          });
+          
+          if (!selectResponse.ok) {
+            throw new Error(`Server error: ${selectResponse.status}`);
+          }
+          
+          const result = await selectResponse.json();
+          
+          if (result.message) {
+            ui.append(result.message);
+            speakText(result.message);
+            
+            if (result.hrEmail) {
+              ui.append(`\n📧 HR Email: ${result.hrEmail}`);
+              ui.append(`🏢 Company: ${result.company}`);
+              ui.append(`💼 Position: ${result.jobTitle}`);
+              
+              window.selectedJob = {
+                hrEmail: result.hrEmail,
+                company: result.company,
+                jobTitle: result.jobTitle,
+                jobCode: result.jobCode
+              };
+              
+              const emailDiv = document.createElement('div');
+              emailDiv.style.marginTop = '10px';
+              emailDiv.style.padding = '10px';
+              emailDiv.style.background = '#004F90';
+              emailDiv.style.color = 'white';
+              emailDiv.style.borderRadius = '5px';
+              emailDiv.style.cursor = 'pointer';
+              emailDiv.style.textAlign = 'center';
+              emailDiv.textContent = `📋 Click to copy: ${result.hrEmail}`;
+              emailDiv.onclick = () => {
+                navigator.clipboard.writeText(result.hrEmail);
+                speakText('Email copied to clipboard');
+                ui.append('✅ Email copied to clipboard!');
+              };
+              logEl.appendChild(emailDiv);
+            }
+          }
+        } catch (err) {
+          ui.append("❌ Error processing selection: " + (err.message || err));
+          speakText("Sorry, there was an error processing your selection.");
+        }
+        
+        ui.setIdle();
+        return;
+      }
+      
+      // ===== HELP COMMAND =====
+      if (transcribedText && (
+          transcribedText.toLowerCase().includes("help") ||
+          transcribedText.toLowerCase().includes("what can i say")
+      )) {
+        const helpMessage = "You can say: 'list jobs' to hear available jobs, 'select job' followed by a number to choose a job, 'generate resume' to create your PDF resume, or 'start interview' followed by a topic like C#, Python, or Java.";
+        ui.append("ℹ️ " + helpMessage);
+        speakText(helpMessage);
+        ui.setIdle();
+        return;
+      }
+      
+      // ===== DEFAULT RESPONSE =====
+      ui.append(`I heard: "${transcribedText}". Try saying 'list jobs', 'generate resume', or 'start interview'.`);
+      speakText(`I heard: "${transcribedText}". Try saying 'list jobs', 'generate resume', or 'start interview'.`);
       ui.setIdle();
       
     } catch(err){

@@ -205,6 +205,43 @@ namespace VoiceAssistantForBlind.Controllers
             }
         }
 
+        [HttpPost("apply")]
+        public async Task<IActionResult> ApplyForJob([FromForm] string hrEmail, [FromForm] string jobTitle, [FromForm] string company, [FromForm] string jobCode)
+        {
+            try
+            {
+                _logger.LogInformation($"Apply for job: {jobTitle} at {company}, HR: {hrEmail}");
+                
+                // Validate required fields
+                if (string.IsNullOrEmpty(hrEmail) || string.IsNullOrEmpty(jobTitle) || string.IsNullOrEmpty(company))
+                {
+                    return Ok(new { 
+                        success = false, 
+                        message = "Missing job information. Please select a job first.",
+                        requiresProfile = false
+                    });
+                }
+
+                // Send email using email service
+                var result = await _emailService.SendJobApplication(hrEmail, jobTitle, company, jobCode ?? "");
+                
+                return Ok(new { 
+                    success = result.Success,
+                    message = result.Message,
+                    requiresProfile = result.RequiresProfile
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ApplyForJob endpoint");
+                return Ok(new { 
+                    success = false, 
+                    message = "An error occurred while sending your application. Please try again.",
+                    requiresProfile = false
+                });
+            }
+        }
+
         private async Task<IActionResult?> HandleJobSelection(string text)
         {
             var sessionId = GetSessionId();
@@ -384,7 +421,8 @@ namespace VoiceAssistantForBlind.Controllers
                 {
                     return Ok(new { 
                         message = "Please create your profile first. Click the 'Update Profile' button in the top right corner, or say 'generate resume' to get started.",
-                        requiresProfile = true
+                        requiresProfile = true,
+                        success = false
                     });
                 }
 
@@ -407,7 +445,8 @@ namespace VoiceAssistantForBlind.Controllers
 
                 return Ok(new { 
                     message = result.Message,
-                    success = result.Success
+                    success = result.Success,
+                    requiresProfile = result.RequiresProfile
                 });
             }
             catch (Exception ex)
@@ -415,7 +454,8 @@ namespace VoiceAssistantForBlind.Controllers
                 _logger.LogError(ex, "Error sending application email");
                 return Ok(new { 
                     message = "Sorry, I encountered an error while sending your application. Please try again.",
-                    success = false
+                    success = false,
+                    requiresProfile = false
                 });
             }
         }

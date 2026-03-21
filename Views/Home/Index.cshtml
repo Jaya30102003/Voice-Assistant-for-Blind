@@ -268,34 +268,19 @@
 </section>
 
 <script>
-  // ===== CACHE DESTROYER =====
-console.log('🔥 FORCING NEW SCRIPT TO RUN');
-// Completely remove any reference to old code
-window.stopRecordingAndUpload = undefined;
-// Force a new function name
-const processVoiceCommand = async function() {
-  // All your code here
-};
-// Replace the click handler completely
-const newMicBtn = micBtn.cloneNode(true);
-micBtn.parentNode.replaceChild(newMicBtn, micBtn);
-micBtn = newMicBtn;
-// ===== END CACHE DESTROYER =====
 (() => {
-  const micBtn   = document.getElementById('micBtn');
-  const btnText  = document.getElementById('btnText');
-  const logEl    = document.getElementById('log');
+  const micBtn = document.getElementById('micBtn');
+  const btnText = document.getElementById('btnText');
+  const logEl = document.getElementById('log');
 
   let audioCtx, mediaStream, processor, source, sink, recorded = [];
   let isRecording = false;
   let busy = false;
   const targetRate = 16000;
   
-  // Add a flag to track if speech is currently playing
   let isSpeaking = false;
   let speechQueue = [];
 
-  // Interview state
   let interviewState = {
     active: false,
     sessionId: null,
@@ -305,57 +290,45 @@ micBtn = newMicBtn;
     currentQuestion: null
   };
 
-  // Store selected job for application
   window.selectedJob = null;
 
   const ui = {
-    setIdle(){
+    setIdle() {
       isRecording = false;
       busy = false;
       micBtn.disabled = false;
       micBtn.classList.remove('recording');
-      micBtn.setAttribute('aria-pressed','false');
-      micBtn.setAttribute('aria-label','Start recording');
+      micBtn.setAttribute('aria-pressed', 'false');
+      micBtn.setAttribute('aria-label', 'Start recording');
       btnText.textContent = 'Click to Start';
     },
-    setRecording(){
+    setRecording() {
       isRecording = true;
       micBtn.disabled = false;
       micBtn.classList.add('recording');
-      micBtn.setAttribute('aria-pressed','true');
-      micBtn.setAttribute('aria-label','Stop recording');
+      micBtn.setAttribute('aria-pressed', 'true');
+      micBtn.setAttribute('aria-label', 'Stop recording');
       btnText.textContent = 'Click to Stop';
     },
-    setBusy(label){
+    setBusy(label) {
       busy = true;
       micBtn.disabled = true;
       if (label) btnText.textContent = label;
     },
-    say(m){ logEl.textContent = m; },
-    append(m){
-      logEl.textContent = (logEl.textContent ? logEl.textContent + "\n" : "") + m;
+    append(m) {
+      logEl.textContent = (logEl.textContent ? logEl.textContent + '\n' : '') + m;
       logEl.scrollTop = logEl.scrollHeight;
-    },
-    clearLog() {
-      logEl.textContent = '';
     }
   };
 
-  // Improved speak function with queue to prevent overlapping
   function speakWithWebSpeech(text, callback) {
     return new Promise((resolve, reject) => {
       if (!window.speechSynthesis) {
         reject(new Error('Web Speech API not supported'));
         return;
       }
-
-      // Add to queue
       speechQueue.push({ text, callback, resolve, reject });
-      
-      // Process queue if not already speaking
-      if (!isSpeaking) {
-        processSpeechQueue();
-      }
+      if (!isSpeaking) processSpeechQueue();
     });
   }
   
@@ -364,19 +337,13 @@ micBtn = newMicBtn;
       isSpeaking = false;
       return;
     }
-    
     isSpeaking = true;
     const { text, callback, resolve, reject } = speechQueue.shift();
-    
-    // Cancel any ongoing speech
     window.speechSynthesis.cancel();
-    
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 0.9;
     utterance.pitch = 1;
     utterance.volume = 1;
-    
-    // Get available voices and try to use a good one
     const voices = window.speechSynthesis.getVoices();
     if (voices.length > 0) {
       const preferredVoice = voices.find(v => 
@@ -387,97 +354,49 @@ micBtn = newMicBtn;
       );
       if (preferredVoice) utterance.voice = preferredVoice;
     }
-    
     utterance.onend = () => {
-      console.log('Web Speech: finished');
       if (callback) callback();
       resolve();
-      // Process next in queue
       setTimeout(() => processSpeechQueue(), 100);
     };
-    
     utterance.onerror = (event) => {
-      console.error('Web Speech error:', event);
       reject(event);
       processSpeechQueue();
     };
-    
-    console.log('Web Speech: speaking...');
     window.speechSynthesis.speak(utterance);
   }
 
-  // Enhanced speak function with multiple fallbacks
   async function speakText(text, callback) {
     if (!text) {
-      console.log('speakText: empty text, calling callback immediately');
       if (callback) callback();
       return;
     }
-
-    // Try Web Speech API first
     try {
       await speakWithWebSpeech(text, callback);
-      return;
     } catch (webSpeechError) {
-      console.log('Web Speech API failed, falling back to TTS API:', webSpeechError);
-      
-      // Fallback to TTS API
       try {
-        console.log('speakText: speaking via TTS API:', text.substring(0, 30) + '...');
         const resp = await fetch('/api/text/speak', {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json' },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text })
         });
         if (!resp.ok) throw new Error(await resp.text());
         const blob = await resp.blob();
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
-        
         audio.onended = () => {
-          console.log('TTS API: audio finished playing');
           URL.revokeObjectURL(url);
           if (callback) callback();
         };
-        
         audio.onerror = (e) => {
-          console.error('TTS API: audio error', e);
           URL.revokeObjectURL(url);
           if (callback) callback();
         };
-        
-        console.log('TTS API: playing audio');
         await audio.play();
-      } catch(ttsError) {
-        console.error('All speech methods failed:', ttsError);
+      } catch (ttsError) {
         if (callback) callback();
-        throw ttsError;
       }
     }
-  }
-
-  function formatFeedbackHTML(feedback) {
-    let html = '<div class="feedback-container">';
-    html += `<div class="score-badge">Score: ${feedback.score}/10</div>`;
-    
-    if (feedback.strengths && feedback.strengths.length) {
-      html += '<div class="strengths"><strong>✅ Strengths:</strong><br>';
-      feedback.strengths.forEach(s => html += `• ${s}<br>`);
-      html += '</div>';
-    }
-    
-    if (feedback.improvements && feedback.improvements.length) {
-      html += '<div class="improvements"><strong>📝 Areas to Improve:</strong><br>';
-      feedback.improvements.forEach(i => html += `• ${i}<br>`);
-      html += '</div>';
-    }
-    
-    if (feedback.sampleBetterAnswer) {
-      html += `<div><strong>💡 Sample Answer:</strong><br>${feedback.sampleBetterAnswer}</div>`;
-    }
-    
-    html += '</div>';
-    return html;
   }
 
   function showApplicationStatus(result) {
@@ -495,9 +414,9 @@ micBtn = newMicBtn;
     logEl.appendChild(statusDiv);
   }
 
-  async function startRecording(){
+  async function startRecording() {
     recorded = [];
-    ui.say('Requesting microphone…');
+    ui.append('Requesting microphone…');
 
     mediaStream = await navigator.mediaDevices.getUserMedia({
       audio: { channelCount: 1, noiseSuppression: true, echoCancellation: true, autoGainControl: true }
@@ -507,8 +426,8 @@ micBtn = newMicBtn;
     if (audioCtx.state === 'suspended') { try { await audioCtx.resume(); } catch {} }
 
     source = audioCtx.createMediaStreamSource(mediaStream);
-
     processor = audioCtx.createScriptProcessor(4096, 1, 1);
+    
     processor.onaudioprocess = e => {
       const input = e.inputBuffer.getChannelData(0);
       const mono16k = resample(input, audioCtx.sampleRate, targetRate);
@@ -523,17 +442,17 @@ micBtn = newMicBtn;
     sink.connect(audioCtx.destination);
 
     ui.setRecording();
-    ui.say('Recording… press spacebar again to stop.');
+    ui.append('Recording… press spacebar again to stop.');
   }
 
-  async function stopRecordingAndUpload(){
-    try{
+  async function stopRecordingAndUpload() {
+    try {
       ui.setBusy('Stopping…');
 
-      if (processor) { try { processor.disconnect(); } catch{} processor.onaudioprocess = null; }
-      if (sink) { try { sink.disconnect(); } catch{} }
-      if (source) { try { source.disconnect(); } catch{} }
-      if (audioCtx) { try { await audioCtx.close(); } catch{} }
+      if (processor) processor.disconnect();
+      if (sink) sink.disconnect();
+      if (source) source.disconnect();
+      if (audioCtx) await audioCtx.close();
       if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
 
       if (!recorded.length) {
@@ -543,16 +462,14 @@ micBtn = newMicBtn;
       }
 
       const wav = toWav(recorded, targetRate);
-      ui.say(`Uploading ${(wav.size/1024/1024).toFixed(2)} MB WAV…`);
-      ui.setBusy('Uploading…');
+      ui.append(`Uploading ${(wav.size / 1024).toFixed(2)} KB...`);
 
       // ===== FIRST: Check for SKIP commands during active interview =====
       if (interviewState.active) {
-        // Get transcription first to check if it's a skip command
         const transcribeForm = new FormData();
         transcribeForm.append('audio', wav, 'speech.wav');
         
-        const transcribeResp = await fetch('/api/stt/transcribe', { method:'POST', body: transcribeForm });
+        const transcribeResp = await fetch('/api/stt/transcribe', { method: 'POST', body: transcribeForm });
         let transcribedText = '';
         
         if (transcribeResp.ok) {
@@ -561,14 +478,10 @@ micBtn = newMicBtn;
           ui.append(`You said: "${transcribedText}"`);
         }
         
-        // Check for skip commands
         if (transcribedText && (
             transcribedText.toLowerCase().includes("skip") ||
             transcribedText.toLowerCase().includes("next question") ||
-            transcribedText.toLowerCase().includes("skip the question") ||
-            transcribedText.toLowerCase().includes("move on") ||
-            transcribedText.toLowerCase().includes("i don't know") ||
-            transcribedText.toLowerCase().includes("i dont know")
+            transcribedText.toLowerCase().includes("i don't know")
         )) {
           ui.append("⏭️ Skipping current question...");
           speakText("Skipping to next question.");
@@ -578,48 +491,33 @@ micBtn = newMicBtn;
             skipForm.append('questionIndex', interviewState.currentIndex);
             skipForm.append('sessionId', interviewState.sessionId);
             
-            console.log("Sending skip request:", {
-              questionIndex: interviewState.currentIndex,
-              sessionId: interviewState.sessionId
-            });
-            
             const skipResponse = await fetch('/api/interview/skip', {
               method: 'POST',
               body: skipForm
             });
             
-            if (!skipResponse.ok) {
-              const errorText = await skipResponse.text();
-              throw new Error(`Server error: ${skipResponse.status} - ${errorText}`);
-            }
+            if (!skipResponse.ok) throw new Error('Skip failed');
             
             const skipResult = await skipResponse.json();
-            console.log("Skip result:", skipResult);
             
             if (skipResult.isComplete) {
-              ui.append("🎉 Interview complete! Great job practicing!");
-              speakText("Interview complete! Great job practicing!");
+              ui.append("🎉 Interview complete!");
+              speakText("Interview complete!");
               interviewState.active = false;
             } else if (skipResult.nextQuestion) {
               interviewState.currentIndex = skipResult.questionIndex;
               interviewState.currentQuestion = skipResult.nextQuestion;
-              interviewState.totalQuestions = skipResult.totalQuestions;
-              
-              const progress = `[Question ${skipResult.questionIndex + 1}/${skipResult.totalQuestions}]`;
-              ui.append(`\n❓ ${progress} ${skipResult.nextQuestion}`);
+              ui.append(`\n❓ ${skipResult.nextQuestion}`);
               speakText(skipResult.nextQuestion);
             }
           } catch (err) {
-            ui.append("❌ Error skipping question: " + (err.message || err));
-            console.error("Skip error:", err);
-            speakText("Sorry, there was an error skipping the question.");
+            ui.append("❌ Error skipping: " + err.message);
           }
           
           ui.setIdle();
           return;
         }
         
-        // ===== INTERVIEW ANSWER HANDLING =====
         ui.append("🗣️ Answer recorded. Evaluating...");
         speakText("Evaluating your answer. Please wait.");
         
@@ -629,162 +527,95 @@ micBtn = newMicBtn;
           answerForm.append('questionIndex', interviewState.currentIndex);
           answerForm.append('sessionId', interviewState.sessionId);
           
-          console.log("Sending answer for evaluation:", {
-            questionIndex: interviewState.currentIndex,
-            sessionId: interviewState.sessionId
-          });
-          
           const evalResponse = await fetch('/api/interview/evaluate', {
             method: 'POST',
             body: answerForm
           });
           
-          if (!evalResponse.ok) {
-            const errorText = await evalResponse.text();
-            throw new Error(`Server error: ${evalResponse.status} - ${errorText}`);
-          }
+          if (!evalResponse.ok) throw new Error('Evaluation failed');
           
           const evalResult = await evalResponse.json();
-          console.log("Evaluation result:", evalResult);
           
           if (evalResult.feedback) {
-            // Display score
             ui.append(`📊 Score: ${evalResult.feedback.score || 0}/10`);
             
-            // Display strengths
-            if (evalResult.feedback.strengths && evalResult.feedback.strengths.length) {
+            if (evalResult.feedback.strengths?.length) {
               ui.append(`✅ Strengths: ${evalResult.feedback.strengths.join(', ')}`);
             }
             
-            // Display improvements
-            if (evalResult.feedback.improvements && evalResult.feedback.improvements.length) {
-              ui.append(`📝 Areas to improve: ${evalResult.feedback.improvements.join(', ')}`);
+            if (evalResult.feedback.improvements?.length) {
+              ui.append(`📝 Improvements: ${evalResult.feedback.improvements.join(', ')}`);
             }
             
-            // Display sample answer if available
-            if (evalResult.feedback.sampleBetterAnswer) {
-              ui.append(`💡 Sample: ${evalResult.feedback.sampleBetterAnswer}`);
-            }
-            
-            // Create feedback message for speech
-            let feedbackMessage = `Score ${evalResult.feedback.score || 0} out of 10. `;
-            if (evalResult.feedback.strengths && evalResult.feedback.strengths.length) {
-              feedbackMessage += `Strengths: ${evalResult.feedback.strengths.join('. ')}. `;
-            }
-            if (evalResult.feedback.improvements && evalResult.feedback.improvements.length) {
-              feedbackMessage += `Areas to improve: ${evalResult.feedback.improvements.join('. ')}. `;
-            }
-            
-            // Check if interview is complete or next question
             if (evalResult.isComplete) {
-              ui.append("🎉 Interview complete! Great job practicing!");
-              // Speak just the completion message
-              speakText("Interview complete! Great job practicing!");
+              ui.append("🎉 Interview complete!");
+              speakText("Interview complete!");
               interviewState.active = false;
             } else if (evalResult.nextQuestion) {
-              // Update interview state with next question
               interviewState.currentIndex = evalResult.questionIndex;
               interviewState.currentQuestion = evalResult.nextQuestion;
-              interviewState.totalQuestions = evalResult.totalQuestions;
-              
-              const progress = `[Question ${evalResult.questionIndex + 1}/${evalResult.totalQuestions}]`;
-              ui.append(`\n❓ ${progress} ${evalResult.nextQuestion}`);
-              
-              // Speak feedback first, then next question
-              speakText(feedbackMessage);
-              // Add next question to queue after a delay
-              setTimeout(() => {
-                speakText(evalResult.nextQuestion);
-              }, 1000);
-            } else {
-              // Just speak feedback if no next question specified
-              speakText(feedbackMessage);
+              ui.append(`\n❓ ${evalResult.nextQuestion}`);
+              speakText(evalResult.nextQuestion);
             }
-          } else {
-            ui.append("⚠️ Unexpected response format from server");
-            speakText("Sorry, I received an unexpected response.");
           }
         } catch (err) {
-          ui.append("❌ Error evaluating answer: " + (err.message || err));
-          console.error("Evaluation error:", err);
-          speakText("Sorry, there was an error evaluating your answer.");
+          ui.append("❌ Error evaluating: " + err.message);
         }
         
         ui.setIdle();
         return;
       }
       
-      // ===== START INTERVIEW COMMAND DETECTION =====
-      // For non-interview commands, get transcription first
+      // ===== GET TRANSCRIPTION FOR COMMANDS =====
       const transcribeForm = new FormData();
       transcribeForm.append('audio', wav, 'speech.wav');
       
-      const transcribeResp = await fetch('/api/stt/transcribe', { method:'POST', body: transcribeForm });
+      const transcribeResp = await fetch('/api/stt/transcribe', { method: 'POST', body: transcribeForm });
       let transcribedText = '';
       
       if (transcribeResp.ok) {
         const transcribeResult = await transcribeResp.json();
         transcribedText = transcribeResult?.text || '';
         ui.append(`You said: "${transcribedText}"`);
+        console.log("📝 User said:", transcribedText);
       }
       
-      // Check if this is an interview start command
+      // ===== START INTERVIEW COMMAND =====
       if (transcribedText && (
           transcribedText.toLowerCase().includes("start interview") ||
           transcribedText.toLowerCase().includes("mock interview") ||
-          transcribedText.toLowerCase().includes("practice interview") ||
-          transcribedText.toLowerCase().includes("begin interview") ||
-          transcribedText.toLowerCase().includes("interview me")
+          transcribedText.toLowerCase().includes("practice interview")
       )) {
-        ui.append("🎤 Detected interview command. Starting interview session...");
+        ui.append("🎤 Starting interview session...");
         
-        // Extract topic
         let topic = "general";
-        if (transcribedText.toLowerCase().includes("c#") || transcribedText.toLowerCase().includes("c sharp")) {
-          topic = "C#";
-        } else if (transcribedText.toLowerCase().includes("python")) {
-          topic = "Python";
-        } else if (transcribedText.toLowerCase().includes("sql")) {
-          topic = "SQL";
-        } else if (transcribedText.toLowerCase().includes("java")) {
-          topic = "Java";
-        } else if (transcribedText.toLowerCase().includes("javascript") || transcribedText.toLowerCase().includes("js")) {
-          topic = "JavaScript";
-        } else {
-          const topicMatch = transcribedText.match(/(?:interview|practice|mock)\s+(?:on\s+)?([a-zA-Z#+.]+)/i);
-          if (topicMatch && topicMatch[1]) {
-            topic = topicMatch[1].trim().replace(/[.,?!]/g, '');
-          }
-        }
+        if (transcribedText.toLowerCase().includes("c#") || transcribedText.toLowerCase().includes("c sharp")) topic = "C#";
+        else if (transcribedText.toLowerCase().includes("python")) topic = "Python";
+        else if (transcribedText.toLowerCase().includes("sql")) topic = "SQL";
+        else if (transcribedText.toLowerCase().includes("java")) topic = "Java";
+        else if (transcribedText.toLowerCase().includes("javascript")) topic = "JavaScript";
         
         try {
           const startResponse = await fetch('/api/interview/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topic: topic })
+            body: JSON.stringify({ topic })
           });
           
           const startResult = await startResponse.json();
+          ui.append(startResult.message);
+          speakText(startResult.message);
           
-          if (startResult.message) {
-            ui.append(startResult.message);
-            speakText(startResult.message);
-            
-            if (startResult.question) {
-              interviewState.active = true;
-              interviewState.sessionId = startResult.sessionId;
-              interviewState.currentIndex = startResult.questionIndex;
-              interviewState.totalQuestions = startResult.totalQuestions;
-              interviewState.topic = startResult.topic;
-              interviewState.currentQuestion = startResult.question;
-              
-              const progress = `[Question ${startResult.questionIndex + 1}/${startResult.totalQuestions}]`;
-              ui.append(`❓ ${progress} ${startResult.question}`);
-            }
+          if (startResult.question) {
+            interviewState.active = true;
+            interviewState.sessionId = startResult.sessionId;
+            interviewState.currentIndex = startResult.questionIndex;
+            interviewState.totalQuestions = startResult.totalQuestions;
+            interviewState.currentQuestion = startResult.question;
+            ui.append(`❓ ${startResult.question}`);
           }
         } catch (err) {
-          ui.append("❌ Error starting interview: " + (err.message || err));
-          speakText("Sorry, there was an error starting the interview.");
+          ui.append("❌ Error starting interview: " + err.message);
         }
         
         ui.setIdle();
@@ -801,7 +632,6 @@ micBtn = newMicBtn;
         speakText("Fetching available jobs.");
         
         try {
-          // Create FormData with the audio file
           const jobFormData = new FormData();
           jobFormData.append('audio', wav, 'job_command.wav');
           
@@ -826,66 +656,6 @@ micBtn = newMicBtn;
         return;
       }
       
-      // ===== RESUME GENERATION COMMAND =====
-      if (transcribedText && (
-          transcribedText.toLowerCase().includes("generate resume") ||
-          transcribedText.toLowerCase().includes("create resume") ||
-          transcribedText.toLowerCase().includes("generate profile") ||
-          transcribedText.toLowerCase().includes("my profile")
-      )) {
-        ui.append("📄 Generating your resume...");
-        speakText("Generating your resume. Please wait.");
-        
-        try {
-          // Create FormData with the audio file
-          const resumeFormData = new FormData();
-          resumeFormData.append('audio', wav, 'resume_command.wav');
-          
-          const resumeResponse = await fetch('/api/voicecommand/process', {
-            method: 'POST',
-            body: resumeFormData
-          });
-          
-          const contentType = resumeResponse.headers.get('content-type');
-          
-          if (contentType && contentType.includes('application/pdf')) {
-            const blob = await resumeResponse.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            
-            const contentDisposition = resumeResponse.headers.get('content-disposition');
-            let fileName = `Resume_${new Date().toISOString().slice(0,10)}.pdf`;
-            
-            if (contentDisposition) {
-              const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-              if (match && match[1]) {
-                fileName = match[1].replace(/['"]/g, '');
-              }
-            }
-            
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-            
-            ui.append("✅ Resume downloaded successfully!");
-            speakText("Your resume has been generated and downloaded.");
-          } else {
-            const result = await resumeResponse.json();
-            ui.append(result.message || "Resume generation initiated");
-            speakText(result.message || "Resume generation initiated");
-          }
-        } catch (err) {
-          ui.append("❌ Error generating resume: " + err.message);
-          speakText("Sorry, there was an error generating your resume.");
-        }
-        
-        ui.setIdle();
-        return;
-      }
-      
       // ===== JOB SELECTION COMMAND =====
       if (transcribedText && (
           transcribedText.toLowerCase().includes("select job") ||
@@ -896,7 +666,6 @@ micBtn = newMicBtn;
         ui.append("🔍 Processing job selection...");
         
         try {
-          // Create FormData with the audio file
           const selectFormData = new FormData();
           selectFormData.append('audio', wav, 'select_command.wav');
           
@@ -927,6 +696,8 @@ micBtn = newMicBtn;
                 jobCode: result.jobCode
               };
               
+              console.log("✅ Job selected:", window.selectedJob);
+              
               const emailDiv = document.createElement('div');
               emailDiv.style.marginTop = '10px';
               emailDiv.style.padding = '10px';
@@ -953,12 +724,145 @@ micBtn = newMicBtn;
         return;
       }
       
+      // ===== RESUME GENERATION COMMAND =====
+      if (transcribedText && (
+          transcribedText.toLowerCase().includes("generate resume") ||
+          transcribedText.toLowerCase().includes("create resume") ||
+          transcribedText.toLowerCase().includes("generate profile") ||
+          transcribedText.toLowerCase().includes("my profile")
+      )) {
+        ui.append("📄 Generating your resume...");
+        speakText("Generating your resume. Please wait.");
+        
+        try {
+          const resumeFormData = new FormData();
+          resumeFormData.append('audio', wav, 'resume_command.wav');
+          
+          const resumeResponse = await fetch('/api/voicecommand/process', {
+            method: 'POST',
+            body: resumeFormData
+          });
+          
+          const contentType = resumeResponse.headers.get('content-type');
+          
+          if (contentType && contentType.includes('application/pdf')) {
+            const blob = await resumeResponse.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            const contentDisposition = resumeResponse.headers.get('content-disposition');
+            let fileName = `Resume_${new Date().toISOString().slice(0, 10)}.pdf`;
+            
+            if (contentDisposition) {
+              const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+              if (match && match[1]) {
+                fileName = match[1].replace(/['"]/g, '');
+              }
+            }
+            
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            ui.append("✅ Resume downloaded successfully!");
+            speakText("Your resume has been generated and downloaded.");
+          } else {
+            const result = await resumeResponse.json();
+            ui.append(result.message || "Resume generation initiated");
+            speakText(result.message || "Resume generation initiated");
+          }
+        } catch (err) {
+          ui.append("❌ Error generating resume: " + err.message);
+          speakText("Sorry, there was an error generating your resume.");
+        }
+        
+        ui.setIdle();
+        return;
+      }
+      
+      // ===== APPLY FOR JOB COMMAND =====
+      if (transcribedText && (
+          transcribedText.toLowerCase().includes("apply for this job") ||
+          transcribedText.toLowerCase().includes("apply now") ||
+          transcribedText.toLowerCase().includes("send application") ||
+          (transcribedText.toLowerCase().includes("apply") && window.selectedJob)
+      )) {
+        console.log("🔍 APPLY COMMAND DETECTED");
+        console.log("window.selectedJob:", window.selectedJob);
+        
+        if (!window.selectedJob) {
+          console.log("❌ No job selected");
+          ui.append("⚠️ Please select a job first by saying 'select job' followed by a number.");
+          speakText("Please select a job first.");
+          ui.setIdle();
+          return;
+        }
+        
+        console.log("✅ Job selected:", window.selectedJob);
+        ui.append("📨 Sending your application...");
+        speakText("Sending your application. Please wait.");
+        
+        try {
+          const applyFormData = new FormData();
+          applyFormData.append('audio', wav, 'apply_command.wav');
+          applyFormData.append('hrEmail', window.selectedJob.hrEmail);
+          applyFormData.append('jobTitle', window.selectedJob.jobTitle);
+          applyFormData.append('company', window.selectedJob.company);
+          applyFormData.append('jobCode', window.selectedJob.jobCode || '');
+          
+          console.log("📤 Sending to /api/voicecommand/apply");
+          console.log("Data:", {
+            hrEmail: window.selectedJob.hrEmail,
+            jobTitle: window.selectedJob.jobTitle,
+            company: window.selectedJob.company,
+            jobCode: window.selectedJob.jobCode
+          });
+          
+          const applyResponse = await fetch('/api/voicecommand/apply', {
+            method: 'POST',
+            body: applyFormData
+          });
+          
+          console.log("📥 Response status:", applyResponse.status);
+          
+          const result = await applyResponse.json();
+          console.log("📥 Response body:", result);
+          
+          ui.append(result.message);
+          speakText(result.message);
+          
+          if (result.success) {
+            window.selectedJob = null;
+            const successDiv = document.createElement('div');
+            successDiv.className = 'application-success';
+            successDiv.innerHTML = `✅ ${result.message}`;
+            logEl.appendChild(successDiv);
+          } else if (result.requiresProfile) {
+            const profileDiv = document.createElement('div');
+            profileDiv.className = 'profile-prompt';
+            profileDiv.innerHTML = `⚠️ ${result.message}<br><br>
+                <a href="/Profile/Edit" style="color: white; background: #004F90; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">📝 Update Profile Now</a>`;
+            logEl.appendChild(profileDiv);
+          }
+        } catch (err) {
+          console.error("❌ Fetch error:", err);
+          ui.append("❌ Error sending application: " + err.message);
+          speakText("Sorry, there was an error sending your application.");
+        }
+        
+        ui.setIdle();
+        return;
+      }
+      
       // ===== HELP COMMAND =====
       if (transcribedText && (
           transcribedText.toLowerCase().includes("help") ||
           transcribedText.toLowerCase().includes("what can i say")
       )) {
-        const helpMessage = "You can say: 'list jobs' to hear available jobs, 'select job' followed by a number to choose a job, 'generate resume' to create your PDF resume, or 'start interview' followed by a topic like C#, Python, or Java.";
+        const helpMessage = "You can say: 'list jobs' to hear available jobs, 'select job' followed by a number to choose a job, 'apply for this job' to send your resume, 'generate resume' to create your PDF resume, or 'start interview' followed by a topic like C#, Python, or Java.";
         ui.append("ℹ️ " + helpMessage);
         speakText(helpMessage);
         ui.setIdle();
@@ -970,9 +874,9 @@ micBtn = newMicBtn;
       speakText(`I heard: "${transcribedText}". Try saying 'list jobs', 'generate resume', or 'start interview'.`);
       ui.setIdle();
       
-    } catch(err){
+    } catch (err) {
       ui.append('Network/Stop error: ' + (err?.message || err));
-      console.error("Fetch error:", err);
+      console.error('Fetch error:', err);
       ui.setIdle();
     }
   }
@@ -980,89 +884,87 @@ micBtn = newMicBtn;
   micBtn.addEventListener('click', async () => {
     if (busy) return;
     if (!isRecording) {
-      try { await startRecording(); }
-      catch(err){ ui.append('Mic error: ' + (err?.message || err)); ui.setIdle(); }
+      try { await startRecording(); } 
+      catch (err) { ui.append('Mic error: ' + (err?.message || err)); ui.setIdle(); }
     } else {
       await stopRecordingAndUpload();
     }
   });
 
-  document.addEventListener('keydown', async (e) => {
+  document.addEventListener('keydown', (e) => {
     if (e.key === ' ') {
       e.preventDefault();
       micBtn.click();
     }
   });
 
-  function resample(f32, srcRate, dstRate){
+  function resample(f32, srcRate, dstRate) {
     if (srcRate === dstRate) return f32;
-    const ratio = srcRate / dstRate, outLen = Math.round(f32.length / ratio);
-    const out = new Float32Array(outLen); let pos = 0;
-    for (let i = 0; i < outLen; i++) { out[i] = f32[Math.floor(pos)]; pos += ratio; }
+    const ratio = srcRate / dstRate;
+    const outLen = Math.round(f32.length / ratio);
+    const out = new Float32Array(outLen);
+    let pos = 0;
+    for (let i = 0; i < outLen; i++) {
+      out[i] = f32[Math.floor(pos)];
+      pos += ratio;
+    }
     return out;
   }
-  
-  function floatToPcm16(f32){
+
+  function floatToPcm16(f32) {
     const i16 = new Int16Array(f32.length);
-    for (let i = 0; i < f32.length; i++){
+    for (let i = 0; i < f32.length; i++) {
       let s = Math.max(-1, Math.min(1, f32[i]));
       i16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
     }
     return i16;
   }
-  
-  function toWav(chunksI16, sampleRate){
-    let total = 0; for (const c of chunksI16) total += c.length;
+
+  function toWav(chunksI16, sampleRate) {
+    let total = 0;
+    for (const c of chunksI16) total += c.length;
     const pcm = new Int16Array(total);
-    let off = 0; for (const c of chunksI16) { pcm.set(c, off); off += c.length; }
+    let off = 0;
+    for (const c of chunksI16) {
+      pcm.set(c, off);
+      off += c.length;
+    }
     const bytes = pcm.length * 2;
     const buffer = new ArrayBuffer(44 + bytes);
     const view = new DataView(buffer);
-    writeAscii(view, 0,  'RIFF'); view.setUint32(4, 36 + bytes, true);
-    writeAscii(view, 8,  'WAVE'); writeAscii(view, 12, 'fmt ');
-    view.setUint32(16, 16, true); view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true); writeAscii(view, 36, 'data');
-    view.setUint32(40, bytes, true); let idx = 44;
-    for (let i = 0; i < pcm.length; i++, idx += 2) view.setInt16(idx, pcm[i], true);
+    writeAscii(view, 0, 'RIFF');
+    view.setUint32(4, 36 + bytes, true);
+    writeAscii(view, 8, 'WAVE');
+    writeAscii(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeAscii(view, 36, 'data');
+    view.setUint32(40, bytes, true);
+    let idx = 44;
+    for (let i = 0; i < pcm.length; i++, idx += 2) {
+      view.setInt16(idx, pcm[i], true);
+    }
     return new Blob([view], { type: 'audio/wav' });
 
-    function writeAscii(dv, offset, s){ for (let i = 0; i < s.length; i++) dv.setUint8(offset + i, s.charCodeAt(i)); }
-  }
-
-  ui.setIdle();
-  
-  // ========== WELCOME MESSAGE ==========
-  function playWelcomeMessage() {
-    const welcomeMessage = "Welcome to Voice Assistant for Blind. " +
-        "You can say 'list jobs' to hear available job openings. " +
-        "Say 'generate resume' to create your PDF resume. " +
-        "For interview practice, say 'start interview' followed by a topic. " +
-        "The available topics are C#, Python, SQL, Java and JavaScript. " +
-        "During interviews, you can say 'skip' to move to the next question, " +
-        "or 'repeat' to hear the question again. " +
-        "To get started, press the spacebar or click the microphone button.";
-    
-    ui.append("🔊 " + welcomeMessage);
-    
-    if (window.speechSynthesis) {
-      try {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(welcomeMessage);
-        utterance.rate = 0.9;
-        window.speechSynthesis.speak(utterance);
-      } catch (e) {
-        console.log('Web Speech failed');
+    function writeAscii(dv, offset, s) {
+      for (let i = 0; i < s.length; i++) {
+        dv.setUint8(offset + i, s.charCodeAt(i));
       }
     }
   }
 
-  window.addEventListener('load', function() {
-    setTimeout(playWelcomeMessage, 1500);
-    ui.append("💡 Say 'help' anytime for voice instructions.");
-  });
+  ui.setIdle();
 
+  setTimeout(() => {
+    const welcomeMessage = "Welcome to Voice Assistant. Here's what the voice assistant can help you with. Say 'list jobs' to hear available jobs, 'select job' followed by a number to choose a job, 'apply for this job' to send your resume, 'generate resume' to create your PDF resume, and 'start interview' followed by a topic. The topics available are C#, Java, Javascript, Python and SQL. If you want the instructions, say 'help'. Good luck! ";
+    ui.append("🔊 " + welcomeMessage);
+    speakText(welcomeMessage);
+  }, 1500);
 })();
 </script>
 </body>

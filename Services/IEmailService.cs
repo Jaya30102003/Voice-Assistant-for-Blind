@@ -14,5 +14,6 @@ namespace VoiceAssistantForBlind.Services
         public bool Success { get; set; }
         public string Message { get; set; }
         public string ErrorDetails { get; set; }
+        public bool RequiresProfile { get; set; } 
     }
 }

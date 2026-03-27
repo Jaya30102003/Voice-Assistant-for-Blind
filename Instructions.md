@@ -1,5 +1,11 @@
 ## 📌 Setup Instructions
+### Prerequisites
+- [.NET SDK](https://dotnet.microsoft.com/download) (version 6.0 or later)
+- A modern web browser with Web Speech API support (e.g., Chrome, Edge)
+- SQLite (included with .NET SDK)
 
+
+### Code Setup
 ```
 # Clone using HTTPS
 git clone https://github.com/Jaya30102003/Voice-Assistant-for-Blind.git
